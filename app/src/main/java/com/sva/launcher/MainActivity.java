@@ -97,9 +97,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 public final class MainActivity extends Activity {
-    private static final int TAB_HOME = 0, TAB_TV = 1, TAB_GAMES = 2, TAB_EVENTS = 3, TAB_SAVED = 4, TAB_PRAYER = 5;
-    private static final int LAST_TAB = TAB_PRAYER;
-    private static final String[] TAB_TITLES = {"آمر", "Live TV", "Games", "تاريخك", "Saved", "الصلاة"};
+    private static final int TAB_HOME = 0, TAB_TV = 1, TAB_GAMES = 2, TAB_EVENTS = 3, TAB_SAVED = 4, TAB_PRAYER = 5, TAB_QURAN = 6;
+    private static final int LAST_TAB = TAB_QURAN;
+    private static final String[] TAB_TITLES = {"آمر", "Live TV", "Games", "تاريخك", "Saved", "الصلاة", "القرآن"};
     private static final String PREF_HIDE_LIVE_TV = "hideLiveTvNavigation";
     private static final String PREF_HIDE_GAMES = "hideGamesNavigation";
     private static final String PREF_HIDE_EVENTS = "hideEventsNavigation";
@@ -152,6 +152,7 @@ public final class MainActivity extends Activity {
     private ChannelLogoLoader logoLoader;
     private SharedPreferences preferences;
     private PrayerView prayerView;
+    private QuranView quranView;
     private LinearLayout root, homeContent, liveContent, gamesContent, eventsContent, savedContent;
     private LinearLayout appRow, youtubeRow, youtubeSection;
     private GridLayout gameGrid, calendarMonthGrid;
@@ -344,6 +345,7 @@ public final class MainActivity extends Activity {
     @android.annotation.SuppressLint("GestureBackNavigation") // Default task behavior after our custom Back handling.
     private void handleBack() {
         if (settingsScreen != null) { settingsScreen.requestClose(); return; }
+        if (activeTab == TAB_QURAN && quranView != null && quranView.handleBack()) return;
         if (activeTab != TAB_HOME) { selectTab(TAB_HOME, true); return; }
         super.onBackPressed();
     }
@@ -483,6 +485,8 @@ public final class MainActivity extends Activity {
     private void startScreensaverIfIdle() {
         boolean playing = activeMediaController != null && activeMediaController.getPlaybackState() != null
                 && activeMediaController.getPlaybackState().getState() == PlaybackState.STATE_PLAYING;
+        // Never interrupt a recitation with the screensaver.
+        if (quranView != null && quranView.isPlaying()) playing = true;
         if (screenActive && settingsScreen == null && hasWindowFocus() && !playing) {
             startActivity(new Intent(this, ScreensaverPreviewActivity.class));
         } else if (screenActive) scheduleScreensaverIdle();
@@ -554,6 +558,12 @@ public final class MainActivity extends Activity {
         cancelWeatherLocation();
         backgroundImageGeneration++;
         super.onPause();
+    }
+
+    @Override protected void onStop() {
+        // Leaving the launcher (opening YouTube, say) pauses the recitation.
+        if (quranView != null) quranView.pause();
+        super.onStop();
     }
 
     @Override protected void onDestroy() {
@@ -745,12 +755,12 @@ public final class MainActivity extends Activity {
         clockDividerParams.setMargins(dp(10), 0, dp(10), 0);
         clockDivider.setVisibility(View.GONE);
         clockPeriod = label("", compactNavigation ? 16 : 20, light ? LiquidTheme.secondaryText(this) : 0xFFBEC4CD, false);
-        clockPeriod.setPadding(dp(10), dp(18), 0, 0);
+        clockPeriod.setPadding(0, dp(18), dp(10), 0);
         timeLine.addView(clockPeriod, new LinearLayout.LayoutParams(-2, -2));
         timeStack.addView(timeLine, new LinearLayout.LayoutParams(-2, -2));
         date = label("", compactNavigation ? 11 : 13, light ? LiquidTheme.secondaryText(this) : 0xFFF5F7F7, false);
         date.setTypeface(LiquidTheme.font(this));
-        date.setLetterSpacing(.16f);
+        date.setLetterSpacing(0f);
         date.setSingleLine(true);
         date.setEllipsize(TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams dateParams = new LinearLayout.LayoutParams(-2, -2);
@@ -826,6 +836,11 @@ public final class MainActivity extends Activity {
         eventsContent = addTabContentPage(viewport, TAB_EVENTS);
         savedContent = addTabContentPage(viewport, TAB_SAVED);
         addPrayerPage(viewport);
+        quranView = new QuranView(this, preferences);
+        quranView.setVisibility(View.GONE);
+        tabPages[TAB_QURAN] = quranView;
+        viewport.addView(quranView, new FrameLayout.LayoutParams(-1, -1));
+        linkTabEntry(TAB_QURAN, quranView.entryFocus());
         tabShell.removeView(navigation);
         tabShell.addView(navigation, new LinearLayout.LayoutParams(-1, dp(dockHeight)));
         FrameLayout heroContent = new FrameLayout(this);
@@ -869,14 +884,14 @@ public final class MainActivity extends Activity {
         calendarCopy.setOrientation(LinearLayout.VERTICAL);
         calendarCopy.setGravity(Gravity.CENTER_VERTICAL);
         homeCalendarCard.addView(calendarCopy, new LinearLayout.LayoutParams(0, -2, 1));
-        homeCalendarEyebrow = label("UP NEXT", 10, light ? LiquidTheme.secondaryText(this) : 0xFFBEC4CD, false);
+        homeCalendarEyebrow = label("القادم", 10, light ? LiquidTheme.secondaryText(this) : 0xFFBEC4CD, false);
         calendarCopy.addView(homeCalendarEyebrow);
         homeCalendarTitle = label("لا مناسبات اليوم", 16, light ? LiquidTheme.text(this) : Color.WHITE, true);
         homeCalendarTitle.setSingleLine(true);
         homeCalendarTitle.setMaxLines(1);
         homeCalendarTitle.setEllipsize(TextUtils.TruncateAt.END);
         calendarCopy.addView(homeCalendarTitle);
-        homeCalendarSubtitle = label("Open your calendar", 11, light ? LiquidTheme.secondaryText(this) : 0xFFBCCBD0, false);
+        homeCalendarSubtitle = label("", 11, light ? LiquidTheme.secondaryText(this) : 0xFFBCCBD0, false);
         homeCalendarSubtitle.setSingleLine(true);
         homeCalendarSubtitle.setEllipsize(TextUtils.TruncateAt.END);
         calendarCopy.addView(homeCalendarSubtitle);
@@ -974,6 +989,17 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams eventCardParams = new LinearLayout.LayoutParams(0, -1, 32);
         eventCardParams.setMargins(dp(2), dp(2), dp(2), dp(2));
         header.addView(homeCalendarCard, eventCardParams);
+        // Right-to-left top bar: clock on the right, then weather, then the next occasion.
+        mirrorRow(header);
+        mirrorRow(timeLine);
+        mirrorRow(weatherPanel);
+        mirrorRow(homeCalendarCard);
+        timeStack.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+        timeCard.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+        weatherCopy.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+        weatherFacts.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+        weatherFacts.setPadding(0, 0, dp(16), 0);
+        calendarCopy.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
         FrameLayout topBar = new FrameLayout(this);
         topBar.setClipChildren(false);
         topBar.setClipToPadding(false);
@@ -1014,6 +1040,8 @@ public final class MainActivity extends Activity {
         appRow.setPadding(dp(12), dp(14), dp(12), dp(14));
         appRow.setClipChildren(false);
         appRow.setClipToPadding(false);
+        appScroll.setFillViewport(true);
+        appRow.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
         appScroll.addView(appRow);
         homeContent.addView(appScroll, new LinearLayout.LayoutParams(-1, dp(92)));
 
@@ -1542,6 +1570,7 @@ public final class MainActivity extends Activity {
         ArrayList<Integer> visible = new ArrayList<>();
         visible.add(TAB_HOME);
         visible.add(TAB_PRAYER);
+        visible.add(TAB_QURAN);
         for (int tab : navigationOrder()) if (!isNavigationHidden(tab)) visible.add(tab);
         // Right-to-left: the first tab sits at the right end of the bar.
         for (int i = visible.size() - 1; i >= 0; i--)
@@ -2407,13 +2436,9 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         DateFormat time = android.text.format.DateFormat.getTimeFormat(this);
         if (twentyFour) time = new java.text.SimpleDateFormat("HH:mm", Locale.getDefault());
         else time = new java.text.SimpleDateFormat("h:mm a", Locale.getDefault());
-        String formattedTime = time.format(now);
-        String period = "";
-        int suffixStart = twentyFour ? -1 : formattedTime.lastIndexOf(' ');
-        if (suffixStart >= 0) {
-            period = formattedTime.substring(suffixStart + 1).toUpperCase(Locale.getDefault());
-            formattedTime = formattedTime.substring(0, suffixStart);
-        }
+        java.time.LocalDateTime localNow = java.time.LocalDateTime.now();
+        String formattedTime = twentyFour ? ArabicFormat.digits(time.format(now)) : ArabicFormat.clock(localNow);
+        String period = twentyFour ? "" : ArabicFormat.period(localNow);
         SpannableString styledTime = new SpannableString(formattedTime);
         int separator = formattedTime.indexOf(':');
         if (separator >= 0) {
@@ -2427,7 +2452,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         clockDivider.setVisibility(View.GONE);
         date.setVisibility(preferences.getBoolean("showDate", true)
                 ? View.VISIBLE : View.GONE);
-        date.setText(new java.text.SimpleDateFormat("EEE, dd MMM yyyy", Locale.getDefault()).format(now).toUpperCase(Locale.getDefault()));
+        date.setText(ArabicFormat.gregorian(localNow.toLocalDate()) + "  ·  " + ArabicFormat.hijri(localNow.toLocalDate()));
     }
 
     private void updateNowPlaying() {
@@ -2530,10 +2555,10 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         boolean light = LiquidTheme.isLight(this);
         if (weatherForecast == null) {
             weatherSymbol.setText("☀");
-            weatherTemperature.setText(hasWeatherLocation() ? "Weather unavailable" : "Weather not set");
+            weatherTemperature.setText(hasWeatherLocation() ? "الطقس غير متاح" : "الطقس غير محدد");
             weatherTemperature.setTextSize(compactNavigation ? 14 : 16);
             weatherTemperature.setTextColor(light ? LiquidTheme.text(this) : 0xFFF5FAF8);
-            weatherCondition.setText(hasWeatherLocation() ? "Refresh in Settings" : "Configure in Settings");
+            weatherCondition.setText(hasWeatherLocation() ? "حدّثه من الإعدادات" : "اختر مدينة من الإعدادات");
             weatherCondition.setVisibility(View.VISIBLE);
             weatherLocation.setText("");
             weatherMetrics.setText("");
@@ -2547,7 +2572,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         double temperature = fahrenheit ? WeatherRepository.fahrenheit(weatherForecast.temperature) : weatherForecast.temperature;
         weatherTemperature.setTextSize(compactNavigation ? 28 : 32);
         weatherTemperature.setTextColor(light ? LiquidTheme.text(this) : Color.WHITE);
-        String temperatureText = Math.round(temperature) + (fahrenheit ? "°F" : "°C");
+        String temperatureText = ArabicFormat.digits(Math.round(temperature)) + "°";
         SpannableString styledTemperature = new SpannableString(temperatureText);
         int degree = temperatureText.indexOf('°');
         if (degree >= 0) styledTemperature.setSpan(new ForegroundColorSpan(0xFFFFA94D), degree,
@@ -2557,13 +2582,13 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         double wind = mph ? WeatherRepository.milesPerHour(weatherForecast.windSpeed) : weatherForecast.windSpeed;
         double apparent = fahrenheit ? WeatherRepository.fahrenheit(weatherForecast.apparentTemperature)
                 : weatherForecast.apparentTemperature;
-        weatherCondition.setText(WeatherRepository.condition(weatherForecast.code));
+        weatherCondition.setText(WeatherRepository.conditionArabic(weatherForecast.code));
         weatherCondition.setVisibility(View.VISIBLE);
-        weatherDetails.setText("Feels like " + Math.round(apparent) + (fahrenheit ? "°F" : "°C"));
+        weatherDetails.setText("المحسوسة " + ArabicFormat.digits(Math.round(apparent)) + "°");
         weatherDetails.setVisibility(View.VISIBLE);
-        weatherLocation.setText("⌖  " + weatherForecast.location);
-        weatherMetrics.setText("≋  " + Math.round(wind) + (mph ? " mph" : " km/h")
-                + (weatherForecast.humidity >= 0 ? "    💧 " + weatherForecast.humidity + "%" : ""));
+        weatherLocation.setText(weatherForecast.location + "  ⌖");
+        weatherMetrics.setText("الرياح " + ArabicFormat.digits(Math.round(wind)) + (mph ? " ميل/س" : " كم/س")
+                + (weatherForecast.humidity >= 0 ? "  ·  الرطوبة " + ArabicFormat.digits(weatherForecast.humidity) + "٪" : ""));
         weatherPanel.setContentDescription(weatherTemperature.getText() + ". " + weatherCondition.getText()
                 + ". " + weatherForecast.location + ". Wind " + Math.round(wind)
                 + (mph ? " mph" : " km/h") + ".");
@@ -2942,7 +2967,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         if (appRow == null || appsLoading) return;
         appsLoading = true;
         appRow.removeAllViews();
-        TextView loading = label("Loading apps…", 15, MUTED, false);
+        TextView loading = label("جارٍ تحميل التطبيقات…", 15, MUTED, false);
         loading.setGravity(Gravity.CENTER_VERTICAL);
         appRow.addView(loading, new LinearLayout.LayoutParams(dp(180), dp(72)));
         lifecycleWork.execute(ioWorker, () -> {
@@ -3037,8 +3062,9 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
                 tile.setNextFocusUpId(musicToggle.getId());
             }
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(tileWidth), dp(64));
-            lp.setMargins(0, 0, dp(10), 0);
-            appRow.addView(tile, lp);
+            lp.setMargins(dp(10), 0, 0, 0);
+            // Right to left: the first app sits at the right end of the row.
+            appRow.addView(tile, 0, lp);
             if (displayed == 0) {
                 tabEntryFocus[TAB_HOME] = tile;
                 if (musicToggle != null) musicToggle.setNextFocusDownId(tile.getId());
@@ -3048,7 +3074,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
                     && packageName.equals(focusedPackage)) tile.requestFocus();
         }
         if (displayed > 0) {
-            tabButtons[TAB_HOME].setNextFocusUpId(appRow.getChildAt(0).getId());
+            tabButtons[TAB_HOME].setNextFocusUpId(appRow.getChildAt(appRow.getChildCount() - 1).getId());
         }
         if (!initialAppFocus && activeTab == TAB_HOME && displayed > 0) {
             initialAppFocus = true;
@@ -3064,7 +3090,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             });
         }
         if (selected.isEmpty()) {
-            TextView empty = label("No apps selected", 15, MUTED, false);
+            TextView empty = label("لا توجد تطبيقات مختارة", 15, MUTED, false);
             empty.setGravity(Gravity.CENTER_VERTICAL);
             appRow.addView(empty, new LinearLayout.LayoutParams(dp(240), dp(72)));
         }
@@ -6079,6 +6105,17 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
                     strokePath.moveTo(6, 11); strokePath.lineTo(6, 15); strokePath.moveTo(4, 13); strokePath.lineTo(8, 13);
                     fillPath.addCircle(17, 12, 1, Path.Direction.CW);
                     fillPath.addCircle(19, 14, 1, Path.Direction.CW);
+                    break;
+                case TAB_QURAN:
+                    // An open book.
+                    strokePath.moveTo(12, 6);
+                    strokePath.cubicTo(9.5f, 4.2f, 6, 4, 3, 4.6f);
+                    strokePath.lineTo(3, 19);
+                    strokePath.cubicTo(6, 18.4f, 9.5f, 18.6f, 12, 20.4f);
+                    strokePath.cubicTo(14.5f, 18.6f, 18, 18.4f, 21, 19);
+                    strokePath.lineTo(21, 4.6f);
+                    strokePath.cubicTo(18, 4, 14.5f, 4.2f, 12, 6);
+                    strokePath.lineTo(12, 20.4f);
                     break;
                 case TAB_PRAYER:
                     // Crescent above a small dome.

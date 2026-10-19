@@ -142,6 +142,18 @@ final class WeatherRepository {
         return "Mixed weather";
     }
 
+    static String conditionArabic(int code) {
+        if (code == 0) return "صافٍ";
+        if (code <= 2) return "غائم جزئيًا";
+        if (code == 3) return "غائم";
+        if (code == 45 || code == 48) return "ضباب";
+        if (code >= 51 && code <= 57) return "رذاذ";
+        if ((code >= 61 && code <= 67) || code == 80 || code == 81 || code == 82) return "مطر";
+        if ((code >= 71 && code <= 77) || code == 85 || code == 86) return "ثلج";
+        if (code >= 95) return "عواصف رعدية";
+        return "متقلب";
+    }
+
     static String symbol(int code, boolean day) {
         if (code == 0) return day ? "☀" : "☾";
         if (code <= 3) return "☁";

@@ -1,0 +1,166 @@
+package com.sva.launcher;
+
+/** Surah names and verse counts, and the reciters offered on the Quran tab (MP3Quran.net). */
+final class QuranData {
+    static final String[] SURAHS = {
+            "الفاتحة",
+            "البقرة",
+            "آل عمران",
+            "النساء",
+            "المائدة",
+            "الأنعام",
+            "الأعراف",
+            "الأنفال",
+            "التوبة",
+            "يونس",
+            "هود",
+            "يوسف",
+            "الرعد",
+            "إبراهيم",
+            "الحجر",
+            "النحل",
+            "الإسراء",
+            "الكهف",
+            "مريم",
+            "طه",
+            "الأنبياء",
+            "الحج",
+            "المؤمنون",
+            "النور",
+            "الفرقان",
+            "الشعراء",
+            "النمل",
+            "القصص",
+            "العنكبوت",
+            "الروم",
+            "لقمان",
+            "السجدة",
+            "الأحزاب",
+            "سبأ",
+            "فاطر",
+            "يس",
+            "الصافات",
+            "ص",
+            "الزمر",
+            "غافر",
+            "فصلت",
+            "الشورى",
+            "الزخرف",
+            "الدخان",
+            "الجاثية",
+            "الأحقاف",
+            "محمد",
+            "الفتح",
+            "الحجرات",
+            "ق",
+            "الذاريات",
+            "الطور",
+            "النجم",
+            "القمر",
+            "الرحمن",
+            "الواقعة",
+            "الحديد",
+            "المجادلة",
+            "الحشر",
+            "الممتحنة",
+            "الصف",
+            "الجمعة",
+            "المنافقون",
+            "التغابن",
+            "الطلاق",
+            "التحريم",
+            "الملك",
+            "القلم",
+            "الحاقة",
+            "المعارج",
+            "نوح",
+            "الجن",
+            "المزمل",
+            "المدثر",
+            "القيامة",
+            "الإنسان",
+            "المرسلات",
+            "النبأ",
+            "النازعات",
+            "عبس",
+            "التكوير",
+            "الانفطار",
+            "المطففين",
+            "الانشقاق",
+            "البروج",
+            "الطارق",
+            "الأعلى",
+            "الغاشية",
+            "الفجر",
+            "البلد",
+            "الشمس",
+            "الليل",
+            "الضحى",
+            "الشرح",
+            "التين",
+            "العلق",
+            "القدر",
+            "البينة",
+            "الزلزلة",
+            "العاديات",
+            "القارعة",
+            "التكاثر",
+            "العصر",
+            "الهمزة",
+            "الفيل",
+            "قريش",
+            "الماعون",
+            "الكوثر",
+            "الكافرون",
+            "النصر",
+            "المسد",
+            "الإخلاص",
+            "الفلق",
+            "الناس"
+    };
+
+    static final int[] AYAHS = {
+            7, 286, 200, 176, 120, 165, 206, 75, 129, 109,
+            123, 111, 43, 52, 99, 128, 111, 110, 98, 135,
+            112, 78, 118, 64, 77, 227, 93, 88, 69, 60,
+            34, 30, 73, 54, 45, 83, 182, 88, 75, 85,
+            54, 53, 89, 59, 37, 35, 38, 29, 18, 45,
+            60, 49, 62, 55, 78, 96, 29, 22, 24, 13,
+            14, 11, 11, 18, 12, 12, 30, 52, 52, 44,
+            28, 28, 20, 56, 40, 31, 50, 40, 46, 42,
+            29, 19, 36, 25, 22, 17, 19, 26, 30, 20,
+            15, 21, 11, 8, 8, 19, 5, 8, 8, 11,
+            11, 8, 3, 9, 5, 4, 7, 3, 6, 3,
+            5, 4, 5, 6
+    };
+
+    /** {name, recitation folder}. Full-surah MP3 files are folder + "001.mp3" … "114.mp3". */
+    static final String[][] RECITERS = {
+            {"مشاري العفاسي", "https://cdn.mp3quran.net/audio/mishary-alafasy/r1/"},
+            {"عبدالرحمن السديس", "https://cdn.mp3quran.net/audio/abdulrahman-sudais/r1/"},
+            {"سعود الشريم", "https://cdn.mp3quran.net/audio/saud-shuraim/r1/"},
+            {"ماهر المعيقلي", "https://cdn.mp3quran.net/audio/maher-muaiqly/r1/"},
+            {"ياسر الدوسري", "https://cdn.mp3quran.net/audio/yasser-dosari/r1/"},
+            {"سعد الغامدي", "https://cdn.mp3quran.net/audio/saad-ghamdi/r1/"},
+            {"إدريس أبكر", "https://cdn.mp3quran.net/audio/idrees-abkar/r1/"},
+            {"عبدالباسط عبدالصمد", "https://cdn.mp3quran.net/audio/abdulbasit-abdulsamad/r3/"},
+            {"محمد صديق المنشاوي", "https://cdn.mp3quran.net/audio/muhammad-minshawi/r1/"},
+            {"محمود خليل الحصري", "https://cdn.mp3quran.net/audio/mahmoud-husary/r1/"},
+    };
+
+    private QuranData() { }
+
+    /** Surah numbers start at 1. */
+    static String url(int reciter, int surah) {
+        String number = String.valueOf(surah);
+        while (number.length() < 3) number = "0" + number;
+        return RECITERS[reciter][1] + number + ".mp3";
+    }
+
+    static String ayahCount(int surah) {
+        int count = AYAHS[surah - 1];
+        String digits = ArabicFormat.digits(count);
+        if (count == 3 || (count >= 3 && count <= 10)) return digits + " آيات";
+        return digits + " آية";
+    }
+}
