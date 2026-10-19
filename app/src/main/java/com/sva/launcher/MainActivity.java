@@ -2948,9 +2948,8 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         lifecycleWork.execute(ioWorker, () -> {
             List<AppEntry> loaded = installedApps();
             List<String> selected = selectedPackages(loaded);
-            if (selected.isEmpty() && !preferences.getBoolean("customApps", false)) {
-                for (AppEntry entry : loaded) selected.add(entry.packageName);
-            }
+            if (selected.isEmpty() && !preferences.getBoolean("customApps", false))
+                selected.addAll(defaultApps(loaded));
             Set<String> selectedSet = new HashSet<>(selected);
             PackageManager packageManager = getPackageManager();
             ArrayList<AppEntry> withIcons = new ArrayList<>(loaded.size());
@@ -2975,9 +2974,8 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         boolean light = LiquidTheme.isLight(this);
         int tileWidth = compactNavigation ? 148 : 167;
         List<String> selected = selectedPackages(all);
-        if (selected.isEmpty() && !preferences.getBoolean("customApps", false)) {
-            for (AppEntry entry : all) selected.add(entry.packageName);
-        }
+        if (selected.isEmpty() && !preferences.getBoolean("customApps", false))
+            selected.addAll(defaultApps(all));
         int displayed = 0;
         for (String packageName : selected) {
             AppEntry entry = findApp(all, packageName);
@@ -3580,6 +3578,22 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         ArrayList<String> selected = new ArrayList<>();
         if (!raw.isEmpty()) for (String pkg : raw.split("\\n")) if (findApp(available, pkg) != null && !selected.contains(pkg)) selected.add(pkg);
         return selected;
+    }
+
+    /** Until apps are chosen in Settings, Home shows only YouTube and Stremio. */
+    private static final String[] DEFAULT_APPS = {
+            "com.google.android.youtube.tv", "com.google.android.youtube", "com.stremio.one"};
+
+    private List<String> defaultApps(List<AppEntry> available) {
+        ArrayList<String> result = new ArrayList<>();
+        boolean youtube = false;
+        for (String pkg : DEFAULT_APPS) {
+            if (findApp(available, pkg) == null) continue;
+            // Show one YouTube: the TV app when it is installed.
+            if (pkg.startsWith("com.google.android.youtube")) { if (youtube) continue; youtube = true; }
+            result.add(pkg);
+        }
+        return result;
     }
 
     private AppEntry findApp(List<AppEntry> all, String pkg) {
