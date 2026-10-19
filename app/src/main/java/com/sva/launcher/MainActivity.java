@@ -1461,9 +1461,7 @@ public final class MainActivity extends Activity {
         // Its listener must not start another switch partway through this one.
         if (switchingTabs) return;
         if (tab < TAB_HOME || tab > LAST_TAB || tabPages[TAB_HOME] == null) return;
-        final int selectedTab = (tab == TAB_TV && isNavigationHidden(tab))
-                || (!tabsInitialized && isNavigationHidden(tab))
-                ? TAB_HOME : tab;
+        final int selectedTab = isNavigationHidden(tab) ? TAB_HOME : tab;
         View currentFocus = getCurrentFocus();
         boolean navigatingTabs = false;
         for (Button button : tabButtons) {
@@ -1520,7 +1518,13 @@ public final class MainActivity extends Activity {
         }
     }
 
+    /** Live TV, Games and Saved are removed from this build of the launcher. */
+    private static boolean isRemovedTab(int tab) {
+        return tab == TAB_TV || tab == TAB_GAMES || tab == TAB_SAVED;
+    }
+
     private boolean isNavigationHidden(int tab) {
+        if (isRemovedTab(tab)) return true;
         String key = tab == TAB_TV ? PREF_HIDE_LIVE_TV : tab == TAB_GAMES ? PREF_HIDE_GAMES
                 : tab == TAB_EVENTS ? PREF_HIDE_EVENTS : null;
         return key != null && preferences.getBoolean(key, false);
@@ -4116,13 +4120,14 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
     private final class SettingsScreen {
         private static final int LIVE = 0, CHANNELS = 1, APPS = 2, APPEARANCE = 3, CLOCK = 4, DRM = 5, HOME = 6, BACKUP = 7, YOUTUBE = 8, CALENDAR = 9, SCHEDULES = 10, GAMES = 11, WEATHER = 12, NAVIGATION = 13;
         private final String[] sections = {"Live TV", "Channels", "Apps", "Appearance", "Clock", "Playback & DRM", "Home button", "Backup & restore", "YouTube", "Calendar", "Schedules", "Games", "Weather", "Navigation"};
+        // Live TV, Channels, YouTube, Games and Playback & DRM are removed from this build.
         private final int[] NAV_ORDER = {
-            // Group 0: Content (5 items)
-            LIVE, CHANNELS, YOUTUBE, CALENDAR, GAMES,
+            // Group 0: Content (1 item)
+            CALENDAR,
             // Group 1: Home & Display (5 items)
             APPS, APPEARANCE, CLOCK, WEATHER, NAVIGATION,
-            // Group 2: System & Advanced (4 items)
-            SCHEDULES, HOME, DRM, BACKUP
+            // Group 2: System & Advanced (3 items)
+            SCHEDULES, HOME, BACKUP
         };
         private final String[] GROUP_LABELS = {"Content", "Home & Display", "System"};
         private final String[] descriptions = {
@@ -4141,7 +4146,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         private final Button[] tabs = new Button[sections.length];
         private final FrameLayout detail = new FrameLayout(MainActivity.this);
         private LinearLayout rail;
-        private int section = LIVE;
+        private int section = APPEARANCE;
         private int renderedSection = -1;
         private final Map<Integer, Integer> sectionScroll = new HashMap<>();
         private final Map<Integer, int[]> sectionFocus = new HashMap<>();
@@ -4166,6 +4171,8 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         private String draftCalendarUrl = preferences.getString("publicCalendarUrl", "");
 
         void show() {
+            if (section == LIVE || section == CHANNELS || section == YOUTUBE || section == GAMES || section == DRM)
+                section = APPEARANCE;
             LinearLayout shell = new LinearLayout(MainActivity.this);
             shell.setOrientation(LinearLayout.VERTICAL);
             shell.setPadding(dp(compactSettings ? 24 : 40), dp(20), dp(compactSettings ? 24 : 40), dp(24));
@@ -4225,7 +4232,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             int lastGroup = -1;
             for (int i = 0; i < NAV_ORDER.length; i++) {
                 final int target = NAV_ORDER[i];
-                int group = (i < 5) ? 0 : (i < 10 ? 1 : 2);
+                int group = (i < 1) ? 0 : (i < 6 ? 1 : 2);
                 if (group != lastGroup) {
                     if (lastGroup >= 0) {
                         View div = new View(MainActivity.this);
@@ -4526,7 +4533,10 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             renderedSection = section;
             firstControl = null;
             detail.removeAllViews();
+            if (section == LIVE || section == CHANNELS || section == YOUTUBE || section == GAMES || section == DRM)
+                section = APPEARANCE;
             for (int i = 0; i < tabs.length; i++) {
+                if (tabs[i] == null) continue;
                 boolean selected = i == section;
                 tabs[i].setTextColor(selected ? SettingsUi.text(MainActivity.this) : SettingsUi.muted(MainActivity.this));
                 tabs[i].setSelected(selected);
@@ -4611,19 +4621,6 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             orderRows.setClipToPadding(false);
             addFormSectionHeader(form, "Visible categories");
             addFormHint(form, "Choose which categories appear in the navigation bar. Your games and calendar data stay saved.");
-            boolean hidden = preferences.getBoolean(PREF_HIDE_LIVE_TV, false);
-            addToggle(form, "Show Live TV in navigation", !hidden, enabled -> {
-                preferences.edit().putBoolean(PREF_HIDE_LIVE_TV, !enabled).apply();
-                rebuildNavigationButtons();
-                renderNavigationOrder(orderRows, -1);
-                if (!enabled && activeTab == TAB_TV) selectTab(TAB_HOME, true);
-            });
-            addToggle(form, "Show Games in navigation", !preferences.getBoolean(PREF_HIDE_GAMES, false), enabled -> {
-                preferences.edit().putBoolean(PREF_HIDE_GAMES, !enabled).apply();
-                rebuildNavigationButtons();
-                renderNavigationOrder(orderRows, -1);
-                if (!enabled && activeTab == TAB_GAMES) selectTab(TAB_HOME, true);
-            });
             addToggle(form, "Show Events in navigation", !preferences.getBoolean(PREF_HIDE_EVENTS, false), enabled -> {
                 preferences.edit().putBoolean(PREF_HIDE_EVENTS, !enabled).apply();
                 rebuildNavigationButtons();
@@ -4647,6 +4644,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             String[] positions = {"First after Home", "Second after Home", "Third after Home", "Last"};
             for (int position = 0; position < ordered.size(); position++) {
                 final int tab = ordered.get(position);
+                if (isRemovedTab(tab)) continue;
                 View row = SettingsUi.choice(MainActivity.this, TAB_TITLES[tab]
                         + (isNavigationHidden(tab) ? " · Hidden" : ""), positions, position, destination -> {
                     List<Integer> updated = navigationOrder();
