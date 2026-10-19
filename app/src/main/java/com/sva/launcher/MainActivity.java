@@ -660,8 +660,8 @@ public final class MainActivity extends Activity {
                 / getResources().getDisplayMetrics().density);
         compactNavigation = screenWidthDp < 800;
         int outerPadding = compactNavigation ? 16 : 33;
-        int dockHeight = 78;
-        navigation.setPadding(dp(outerPadding), dp(12), dp(outerPadding), dp(14));
+        int dockHeight = 64;
+        navigation.setPadding(dp(outerPadding), dp(10), dp(outerPadding), dp(12));
         tabShell.addView(navigation, new LinearLayout.LayoutParams(-1, dp(dockHeight)));
 
         navigation.setClipChildren(false);
@@ -674,7 +674,7 @@ public final class MainActivity extends Activity {
         navbar.setBackground(roundedShape(light ? 0xE9F9FCF8 : 0xD508181A,
                 light ? 0x887C9E9A : 0x55C4D9D2, 1, 24));
         navbar.setElevation(dp(6));
-        navigation.addView(navbar, new LinearLayout.LayoutParams(-2, dp(50)));
+        navigation.addView(navbar, new LinearLayout.LayoutParams(-2, dp(42)));
 
         int weatherMaxWidth = compactNavigation ? 165 : 195;
         HorizontalScrollView tabScroller = new HorizontalScrollView(this);
@@ -683,13 +683,13 @@ public final class MainActivity extends Activity {
         tabScroller.setFillViewport(false);
         tabScroller.setClipChildren(true);
         tabScroller.setClipToPadding(false);
-        LinearLayout.LayoutParams tabGroupParams = new LinearLayout.LayoutParams(-2, dp(46));
+        LinearLayout.LayoutParams tabGroupParams = new LinearLayout.LayoutParams(-2, dp(40));
         navbar.addView(tabScroller, tabGroupParams);
         tabRow = new LinearLayout(this);
         tabRow.setGravity(Gravity.CENTER_VERTICAL);
         tabRow.setClipChildren(false);
         tabRow.setClipToPadding(false);
-        tabRow.setPadding(dp(4), dp(3), dp(4), dp(3));
+        tabRow.setPadding(dp(4), dp(2), dp(4), dp(2));
         tabScroller.addView(tabRow, new HorizontalScrollView.LayoutParams(-2, -1));
         for (int i = 0; i < TAB_TITLES.length; i++) {
             final int tab = i;
@@ -703,27 +703,18 @@ public final class MainActivity extends Activity {
             NavigationGlyph glyph = new NavigationGlyph(i);
             navigationGlyphs[i] = glyph;
             glyph.setBounds(0, 0, dp(18), dp(18));
-            button.setCompoundDrawablesRelative(glyph, null, null, null);
-            button.setCompoundDrawablePadding(dp(7));
-            GradientDrawable selectedPill = new GradientDrawable();
-            selectedPill.setColor(LiquidTheme.accent(this));
-            selectedPill.setCornerRadius(dp(24));
-            GradientDrawable focusedPill = new GradientDrawable();
-            focusedPill.setColor(LiquidTheme.accent(this));
-            focusedPill.setCornerRadius(dp(24));
-            focusedPill.setStroke(dp(2), light ? 0x66000000 : 0x66FFFFFF);
-            StateListDrawable tabStates = new Motion.States();
-            tabStates.addState(new int[]{android.R.attr.state_focused}, focusedPill);
-            tabStates.addState(new int[]{android.R.attr.state_selected}, selectedPill);
-            tabStates.addState(new int[]{}, new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
-            button.setBackground(tabStates);
+            // Right-to-left: the icon sits to the right of the Arabic label.
+            button.setCompoundDrawablesRelative(null, null, glyph, null);
+            button.setCompoundDrawablePadding(dp(6));
+            // No filled pill: a soft underline marks the selected tab and stretches when focused.
+            button.setBackground(new TabIndicatorDrawable(light ? 0xFF9A6A1F : 0xFFE3B469,
+                    light ? 0x14000000 : 0x1AFFFFFF, getResources().getDisplayMetrics().density));
             button.setSelected(i == activeTab);
             button.setTypeface(LiquidTheme.font(this));
-            int selectedTextColor = light ? Color.WHITE : 0xFF071417;
-            int unselectedTextColor = light ? 0xFF24403D : 0xD4FFFFFF;
             button.setTextColor(new android.content.res.ColorStateList(
-                    new int[][]{new int[]{android.R.attr.state_selected}, new int[]{}},
-                    new int[]{selectedTextColor, unselectedTextColor}));
+                    new int[][]{new int[]{android.R.attr.state_selected}, new int[]{android.R.attr.state_focused}, new int[]{}},
+                    new int[]{tabTextColor(true), tabTextColor(true), tabTextColor(false)}));
+            glyph.setGlyphColor(tabTextColor(i == activeTab));
             button.setOnClickListener(v -> selectTab(tab, false));
             button.setOnFocusChangeListener((view, focused) -> {
                 LiquidTheme.animateContainedFocus(view, focused);
@@ -817,10 +808,13 @@ public final class MainActivity extends Activity {
         systemShortcuts.setClipChildren(false);
         systemShortcuts.setClipToPadding(false);
         systemShortcuts.setPadding(dp(3), dp(3), dp(3), dp(3));
-        navbar.addView(systemShortcuts, new LinearLayout.LayoutParams(-2, dp(46)));
+        navbar.addView(systemShortcuts, new LinearLayout.LayoutParams(-2, dp(40)));
         addTopIcon(systemShortcuts, "Network", R.drawable.ic_network, this::openNetworkSettings);
         addTopIcon(systemShortcuts, "Android Settings", R.drawable.ic_android_settings, this::openAndroidSettings);
         addTopIcon(systemShortcuts, "Launcher Settings", R.drawable.ic_launcher_settings, this::showSettings);
+        // Right-to-left bar: system shortcuts on the left, tabs on the right.
+        mirrorRow(systemShortcuts);
+        mirrorRow(navbar);
         FrameLayout viewport = new FrameLayout(this);
         viewport.setClipChildren(false);
         viewport.setClipToPadding(false);
@@ -1489,9 +1483,7 @@ public final class MainActivity extends Activity {
                     if (i != previousTab && i != selectedTab) continue;
                     boolean selected = i == selectedTab;
                     tabButtons[i].setSelected(selected);
-                    navigationGlyphs[i].setGlyphColor(selected
-                            ? (LiquidTheme.isLight(this) ? Color.WHITE : 0xFF071417)
-                            : (LiquidTheme.isLight(this) ? 0xFF24403D : 0xD4FFFFFF));
+                    navigationGlyphs[i].setGlyphColor(tabTextColor(selected));
                 }
             }
             if (!keepNavigationFocus && !focusTabButton) {
@@ -1523,6 +1515,11 @@ public final class MainActivity extends Activity {
         return tab == TAB_TV || tab == TAB_GAMES || tab == TAB_SAVED;
     }
 
+    private int tabTextColor(boolean selected) {
+        boolean light = LiquidTheme.isLight(this);
+        return selected ? (light ? 0xFF1E2A2A : 0xFFF4EFE6) : (light ? 0x9924403D : 0x8CFFFFFF);
+    }
+
     private boolean isNavigationHidden(int tab) {
         if (isRemovedTab(tab)) return true;
         String key = tab == TAB_TV ? PREF_HIDE_LIVE_TV : tab == TAB_GAMES ? PREF_HIDE_GAMES
@@ -1542,12 +1539,13 @@ public final class MainActivity extends Activity {
     private void rebuildNavigationButtons() {
         if (tabRow == null) return;
         tabRow.removeAllViews();
-        tabRow.addView(tabButtons[TAB_HOME], new LinearLayout.LayoutParams(-2, dp(38)));
-        tabRow.addView(tabButtons[TAB_PRAYER], new LinearLayout.LayoutParams(-2, dp(38)));
-        for (int tab : navigationOrder()) {
-            if (isNavigationHidden(tab)) continue;
-            tabRow.addView(tabButtons[tab], new LinearLayout.LayoutParams(-2, dp(38)));
-        }
+        ArrayList<Integer> visible = new ArrayList<>();
+        visible.add(TAB_HOME);
+        visible.add(TAB_PRAYER);
+        for (int tab : navigationOrder()) if (!isNavigationHidden(tab)) visible.add(tab);
+        // Right-to-left: the first tab sits at the right end of the bar.
+        for (int i = visible.size() - 1; i >= 0; i--)
+            tabRow.addView(tabButtons[visible.get(i)], new LinearLayout.LayoutParams(-2, dp(36)));
     }
 
     private void openYouTubeSettings() {
@@ -3426,8 +3424,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         icon.setImageResource(iconResource);
         icon.setColorFilter(LiquidTheme.isLight(this) ? 0xFF24403D : 0xD4FFFFFF);
         icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        icon.setPadding(dp(compactNavigation ? 8 : 10), dp(compactNavigation ? 8 : 10),
-                dp(compactNavigation ? 8 : 10), dp(compactNavigation ? 8 : 10));
+        icon.setPadding(dp(8), dp(8), dp(8), dp(8));
         icon.setContentDescription(title);
         icon.setTooltipText(title);
         boolean light = LiquidTheme.isLight(this);
@@ -3443,7 +3440,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         icon.setOnFocusChangeListener(LiquidTheme::animateContainedFocus);
         icon.setOnClickListener(v -> action.run());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                dp(compactNavigation ? 32 : 36), dp(compactNavigation ? 32 : 36));
+                dp(compactNavigation ? 30 : 32), dp(compactNavigation ? 30 : 32));
         lp.setMargins(dp(2), 0, dp(2), 0);
         container.addView(icon, lp);
     }
