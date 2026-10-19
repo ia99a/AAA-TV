@@ -139,6 +139,8 @@ final class QuranData {
             {"مشاري العفاسي", "https://cdn.mp3quran.net/audio/mishary-alafasy/r1/"},
             {"عبدالرحمن السديس", "https://cdn.mp3quran.net/audio/abdulrahman-sudais/r1/"},
             {"سعود الشريم", "https://cdn.mp3quran.net/audio/saud-shuraim/r1/"},
+            {"بدر التركي", "https://cdn.mp3quran.net/audio/badr-turki/r1/"},
+            {"علي جابر", "https://cdn.mp3quran.net/audio/ali-jaber/r1/"},
             {"ماهر المعيقلي", "https://cdn.mp3quran.net/audio/maher-muaiqly/r1/"},
             {"ياسر الدوسري", "https://cdn.mp3quran.net/audio/yasser-dosari/r1/"},
             {"سعد الغامدي", "https://cdn.mp3quran.net/audio/saad-ghamdi/r1/"},

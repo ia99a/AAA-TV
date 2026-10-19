@@ -1570,7 +1570,6 @@ public final class MainActivity extends Activity {
         ArrayList<Integer> visible = new ArrayList<>();
         visible.add(TAB_HOME);
         visible.add(TAB_PRAYER);
-        visible.add(TAB_QURAN);
         for (int tab : navigationOrder()) if (!isNavigationHidden(tab)) visible.add(tab);
         // Right-to-left: the first tab sits at the right end of the bar.
         for (int i = visible.size() - 1; i >= 0; i--)
@@ -3001,6 +3000,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         List<String> selected = selectedPackages(all);
         if (selected.isEmpty() && !preferences.getBoolean("customApps", false))
             selected.addAll(defaultApps(all));
+        boolean quranTileAdded = false;
         int displayed = 0;
         for (String packageName : selected) {
             AppEntry entry = findApp(all, packageName);
@@ -3065,6 +3065,11 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             lp.setMargins(dp(10), 0, 0, 0);
             // Right to left: the first app sits at the right end of the row.
             appRow.addView(tile, 0, lp);
+            // The Quran player sits right beside YouTube.
+            if (!quranTileAdded && packageName.startsWith("com.google.android.youtube")) {
+                appRow.addView(quranTile(tileWidth), 0, quranTileParams());
+                quranTileAdded = true;
+            }
             if (displayed == 0) {
                 tabEntryFocus[TAB_HOME] = tile;
                 if (musicToggle != null) musicToggle.setNextFocusDownId(tile.getId());
@@ -3073,6 +3078,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             if (initialAppFocus && activeTab == TAB_HOME && settingsScreen == null
                     && packageName.equals(focusedPackage)) tile.requestFocus();
         }
+        if (!quranTileAdded) appRow.addView(quranTile(tileWidth), appRow.getChildCount(), quranTileParams());
         if (displayed > 0) {
             tabButtons[TAB_HOME].setNextFocusUpId(appRow.getChildAt(appRow.getChildCount() - 1).getId());
         }
@@ -3604,6 +3610,46 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         ArrayList<String> selected = new ArrayList<>();
         if (!raw.isEmpty()) for (String pkg : raw.split("\\n")) if (findApp(available, pkg) != null && !selected.contains(pkg)) selected.add(pkg);
         return selected;
+    }
+
+    private LinearLayout.LayoutParams quranTileParams() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(compactNavigation ? 148 : 167), dp(64));
+        lp.setMargins(dp(10), 0, 0, 0);
+        return lp;
+    }
+
+    /** A home tile that opens the built-in Quran player, styled like the app tiles. */
+    private View quranTile(int tileWidth) {
+        LinearLayout tile = new LinearLayout(this);
+        tile.setId(View.generateViewId());
+        tile.setGravity(Gravity.CENTER);
+        tile.setFocusable(true);
+        tile.setClickable(true);
+        tile.setFocusableInTouchMode(false);
+        StateListDrawable states = new Motion.States();
+        states.addState(new int[]{android.R.attr.state_focused}, roundedShape(0xF22F3E36, LiquidTheme.accent(this), 2, 16));
+        states.addState(new int[]{android.R.attr.state_pressed}, roundedShape(0xF22F3E36, LiquidTheme.accent(this), 2, 16));
+        states.addState(new int[]{}, roundedShape(0xE02F3E36, 0x66FFFFFF, 1, 16));
+        tile.setBackground(states);
+        tile.setElevation(dp(2));
+        tile.setOnFocusChangeListener(LiquidTheme::animateFocus);
+        Motion.interaction(tile, false);
+        tile.setPadding(dp(8), dp(4), dp(10), dp(4));
+        tile.setContentDescription("القرآن");
+        TextView name = label("القرآن", compactNavigation ? 13 : 14, 0xFFF1ECE2, true);
+        name.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+        tile.addView(name, new LinearLayout.LayoutParams(0, -1, 1));
+        TextView icon = label("", 12, 0xFFE3B469, false);
+        NavigationGlyph book = new NavigationGlyph(TAB_QURAN);
+        book.setBounds(0, 0, dp(22), dp(22));
+        book.setGlyphColor(0xFFE3B469);
+        icon.setCompoundDrawables(null, book, null, null);
+        icon.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(36), dp(36));
+        iconParams.leftMargin = dp(8);
+        tile.addView(icon, iconParams);
+        tile.setOnClickListener(v -> selectTab(TAB_QURAN, false));
+        return tile;
     }
 
     /** Until apps are chosen in Settings, Home shows only YouTube and Stremio. */
