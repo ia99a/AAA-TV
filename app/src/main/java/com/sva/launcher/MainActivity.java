@@ -1736,6 +1736,7 @@ public final class MainActivity extends Activity {
                 for (PublicCalendarRepository.Event event : dayEvents) eventTitles.add(event.title);
                 CalendarDayButton dateButton = new CalendarDayButton(this);
                 dateButton.setContent(dayNumber, eventTitles, day.equals(LocalDate.now()));
+                dateButton.setHijri(SaudiCalendar.hijriCellLabel(day));
                 dateButton.setId(View.generateViewId());
                 dateButton.setTag(day);
                 StringBuilder dayDescription = new StringBuilder(day.format(
@@ -1745,7 +1746,7 @@ public final class MainActivity extends Activity {
                     dayDescription.append(". ").append(event.title);
                 dateButton.setContentDescription(dayDescription);
                 styleCalendarDateButton(dateButton, day.equals(selectedCalendarDay), day.equals(LocalDate.now()),
-                        day.getDayOfWeek() == DayOfWeek.SATURDAY || day.getDayOfWeek() == DayOfWeek.SUNDAY);
+                        day.getDayOfWeek() == DayOfWeek.FRIDAY || day.getDayOfWeek() == DayOfWeek.SATURDAY);
                 dateButton.setOnFocusChangeListener((view, focused) -> {
                     if (focused) selectCalendarDay(day);
                 });
@@ -1776,7 +1777,8 @@ public final class MainActivity extends Activity {
     private void updateCalendarHeader(LocalDate day) {
         if (calendarHeaderDate == null) return;
         calendarHeaderDate.setText(day.format(java.time.format.DateTimeFormatter.ofPattern(
-                "EEEE, d MMM", Locale.getDefault())).toUpperCase(Locale.getDefault()));
+                "EEEE, d MMM", Locale.getDefault())).toUpperCase(Locale.getDefault())
+                + "  ·  " + ArabicFormat.hijri(day));
         ArrayList<String> titles = new ArrayList<>();
         ZoneId zone = ZoneId.systemDefault();
         for (PublicCalendarRepository.Event event : cachedCalendarEvents()) {
@@ -1801,7 +1803,7 @@ public final class MainActivity extends Activity {
             if (child instanceof Button && child.getTag() instanceof LocalDate) {
                 LocalDate day = (LocalDate) child.getTag();
                 styleCalendarDateButton((Button) child, selectedCalendarDay.equals(day), day.equals(LocalDate.now()),
-                        day.getDayOfWeek() == DayOfWeek.SATURDAY || day.getDayOfWeek() == DayOfWeek.SUNDAY);
+                        day.getDayOfWeek() == DayOfWeek.FRIDAY || day.getDayOfWeek() == DayOfWeek.SATURDAY);
             }
         }
     }
@@ -1899,6 +1901,9 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             )
     );
 
+    String hijriDate = ArabicFormat.hijri(selectedCalendarDay);
+    if (!hijriDate.isEmpty()) calendarDetailDay.append("\n" + hijriDate);
+
     calendarDetailMoon.setText(moon.symbol);
     calendarDetailMoonName.setText(moon.name);
     calendarDetailIllumination.setText(
@@ -1971,6 +1976,8 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
     private final class CalendarDayButton extends Button {
 
     private int dayNumber;
+    private String hijriLabel = "";
+    private final Paint hijriPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final ArrayList<String> eventTitles = new ArrayList<>();
     private boolean today;
 
@@ -2036,6 +2043,11 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         }
         this.today = today;
 
+        invalidate();
+    }
+
+    public void setHijri(String label) {
+        hijriLabel = label == null ? "" : label;
         invalidate();
     }
 
@@ -2132,6 +2144,13 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             );
         }
 
+        if (!hijriLabel.isEmpty()) {
+            hijriPaint.setTextSize(sp(11));
+            hijriPaint.setColor(secondary);
+            hijriPaint.setTextAlign(Paint.Align.RIGHT);
+            canvas.drawText(hijriLabel, right - dp(10), row1Baseline, hijriPaint);
+        }
+
         float chipTop = row1Baseline + dp(3);
         float chipHeight = dp(13);
         for (int i = 0; i < eventTitles.size(); i++) {
@@ -2153,6 +2172,13 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
     }
 
     private int calendarEventColor(String title) {
+        switch (SaudiCalendar.kindOf(title)) {
+            case SaudiCalendar.ISLAMIC: return 0xAA1B6B4A;
+            case SaudiCalendar.WHITE_DAYS: return 0x88707C8A;
+            case SaudiCalendar.NATIONAL: return 0xAA0F5A35;
+            case SaudiCalendar.SCHOOL: return 0xAA7A5A1C;
+            default: break;
+        }
         String name = title.toLowerCase(Locale.ROOT);
         if (name.contains("ekadashi")) return 0xBB1252AE;
         if (name.contains("purnima")) return 0xAA166E4B;
@@ -2162,6 +2188,13 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
     }
 
     private int calendarEventDotColor(String title) {
+        switch (SaudiCalendar.kindOf(title)) {
+            case SaudiCalendar.ISLAMIC: return 0xFF5FD39A;
+            case SaudiCalendar.WHITE_DAYS: return 0xFFF2F2EC;
+            case SaudiCalendar.NATIONAL: return 0xFF3CCB7F;
+            case SaudiCalendar.SCHOOL: return 0xFFFFC857;
+            default: break;
+        }
         String name = title.toLowerCase(Locale.ROOT);
         if (name.contains("ekadashi")) return 0xFF38AAFF;
         if (name.contains("purnima")) return 0xFF27DF7F;
@@ -2678,8 +2711,28 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
                         value.optBoolean("allDay", false)));
             }
         } catch (Exception ignored) { }
+        events.addAll(saudiCalendarEvents());
         Collections.sort(events, (a, b) -> Long.compare(a.startMs, b.startMs));
         return events;
+    }
+
+    private LocalDate saudiEventsDay;
+    private List<PublicCalendarRepository.Event> saudiEvents = new ArrayList<>();
+
+    /** Islamic occasions, white days, national days and school holidays, rebuilt once a day. */
+    private List<PublicCalendarRepository.Event> saudiCalendarEvents() {
+        LocalDate today = LocalDate.now();
+        if (today.equals(saudiEventsDay)) return saudiEvents;
+        ZoneId zone = ZoneId.systemDefault();
+        ArrayList<PublicCalendarRepository.Event> generated = new ArrayList<>();
+        for (SaudiCalendar.Item item : SaudiCalendar.between(today.minusMonths(13), today.plusMonths(13))) {
+            long start = item.start.atStartOfDay(zone).toInstant().toEpochMilli();
+            long end = item.endInclusive.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli();
+            generated.add(new PublicCalendarRepository.Event(item.title, start, end, true));
+        }
+        saudiEvents = generated;
+        saudiEventsDay = today;
+        return saudiEvents;
     }
 
     private void updateHomeCalendarWidget() {
@@ -2695,15 +2748,16 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             if (event.startMs > System.currentTimeMillis()) { nextEvent = event; break; }
         }
         if (todayEvent != null) {
-            homeCalendarEyebrow.setText("TODAY");
+            homeCalendarEyebrow.setText("اليوم");
             homeCalendarTitle.setText(todayEvent.title);
-            homeCalendarSubtitle.setText(todayEvent.allDay ? "All day"
+            homeCalendarSubtitle.setText(todayEvent.allDay ? ArabicFormat.hijri(today)
                     : new java.text.SimpleDateFormat("h:mm a", Locale.getDefault()).format(new Date(todayEvent.startMs)));
         } else if (nextEvent != null) {
-            homeCalendarEyebrow.setText("UP NEXT");
+            homeCalendarEyebrow.setText("القادم");
             homeCalendarTitle.setText(nextEvent.title);
-            homeCalendarSubtitle.setText(new java.text.SimpleDateFormat("EEE · h:mm a", Locale.getDefault())
-                    .format(new Date(nextEvent.startMs)));
+            homeCalendarSubtitle.setText(nextEvent.allDay
+                    ? ArabicFormat.gregorian(java.time.Instant.ofEpochMilli(nextEvent.startMs).atZone(ZoneId.systemDefault()).toLocalDate())
+                    : new java.text.SimpleDateFormat("EEE · h:mm a", Locale.getDefault()).format(new Date(nextEvent.startMs)));
         } else {
             homeCalendarEyebrow.setText("TODAY");
             homeCalendarTitle.setText("No events today");
