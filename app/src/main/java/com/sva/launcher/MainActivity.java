@@ -97,8 +97,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 public final class MainActivity extends Activity {
-    private static final int TAB_HOME = 0, TAB_TV = 1, TAB_GAMES = 2, TAB_EVENTS = 3, TAB_SAVED = 4;
-    private static final String[] TAB_TITLES = {"Home", "Live TV", "Games", "Events", "Saved"};
+    private static final int TAB_HOME = 0, TAB_TV = 1, TAB_GAMES = 2, TAB_EVENTS = 3, TAB_SAVED = 4, TAB_PRAYER = 5;
+    private static final int LAST_TAB = TAB_PRAYER;
+    private static final String[] TAB_TITLES = {"Home", "Live TV", "Games", "Events", "Saved", "الصلاة"};
     private static final String PREF_HIDE_LIVE_TV = "hideLiveTvNavigation";
     private static final String PREF_HIDE_GAMES = "hideGamesNavigation";
     private static final String PREF_HIDE_EVENTS = "hideEventsNavigation";
@@ -150,6 +151,7 @@ public final class MainActivity extends Activity {
     private IptvRepository iptv;
     private ChannelLogoLoader logoLoader;
     private SharedPreferences preferences;
+    private PrayerView prayerView;
     private LinearLayout root, homeContent, liveContent, gamesContent, eventsContent, savedContent;
     private LinearLayout appRow, youtubeRow, youtubeSection;
     private GridLayout gameGrid, calendarMonthGrid;
@@ -244,7 +246,7 @@ public final class MainActivity extends Activity {
         preferences = getSharedPreferences("launcher", MODE_PRIVATE);
         if (state != null) {
             focusedPackage = state.getString("focusedPackage");
-            activeTab = Math.max(TAB_HOME, Math.min(TAB_SAVED, state.getInt("activeTab", TAB_HOME)));
+            activeTab = Math.max(TAB_HOME, Math.min(LAST_TAB, state.getInt("activeTab", TAB_HOME)));
             for (int i = 0; i < tabScroll.length; i++) tabScroll[i] = state.getInt("tabScroll" + i, 0);
             tabScroll[TAB_HOME] = 0;
             try { selectedCalendarDay = LocalDate.parse(state.getString("selectedCalendarDay", LocalDate.now().toString())); }
@@ -829,6 +831,7 @@ public final class MainActivity extends Activity {
         gamesContent = addTabContentPage(viewport, TAB_GAMES);
         eventsContent = addTabContentPage(viewport, TAB_EVENTS);
         savedContent = addTabContentPage(viewport, TAB_SAVED);
+        addPrayerPage(viewport);
         tabShell.removeView(navigation);
         tabShell.addView(navigation, new LinearLayout.LayoutParams(-1, dp(dockHeight)));
         FrameLayout heroContent = new FrameLayout(this);
@@ -1178,15 +1181,28 @@ public final class MainActivity extends Activity {
         return content;
     }
 
+    private void addPrayerPage(FrameLayout viewport) {
+        ScrollView page = new ScrollView(this);
+        page.setFillViewport(true);
+        page.setVerticalScrollBarEnabled(false);
+        page.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        prayerView = new PrayerView(this, preferences);
+        page.addView(prayerView, new ScrollView.LayoutParams(-1, -1));
+        page.setVisibility(View.GONE);
+        tabPages[TAB_PRAYER] = page;
+        viewport.addView(page, new FrameLayout.LayoutParams(-1, -1));
+        linkTabEntry(TAB_PRAYER, prayerView.entryFocus());
+    }
+
     private void linkTabEntry(int tab, View entry) {
-        if (entry == null || tab < TAB_HOME || tab > TAB_SAVED || tabButtons[tab] == null) return;
+        if (entry == null || tab < TAB_HOME || tab > LAST_TAB || tabButtons[tab] == null) return;
         if (entry.getId() == View.NO_ID) entry.setId(View.generateViewId());
         tabButtons[tab].setNextFocusUpId(entry.getId());
         tabEntryFocus[tab] = entry;
     }
 
     private void linkTopControl(int tab, View control) {
-        if (control == null || tab < TAB_HOME || tab > TAB_SAVED) return;
+        if (control == null || tab < TAB_HOME || tab > LAST_TAB) return;
         if (control.getId() == View.NO_ID) control.setId(View.generateViewId());
     }
 
@@ -1444,7 +1460,7 @@ public final class MainActivity extends Activity {
         // Hiding a focused page can synchronously focus a navigation button.
         // Its listener must not start another switch partway through this one.
         if (switchingTabs) return;
-        if (tab < TAB_HOME || tab > TAB_SAVED || tabPages[TAB_HOME] == null) return;
+        if (tab < TAB_HOME || tab > LAST_TAB || tabPages[TAB_HOME] == null) return;
         final int selectedTab = (tab == TAB_TV && isNavigationHidden(tab))
                 || (!tabsInitialized && isNavigationHidden(tab))
                 ? TAB_HOME : tab;
@@ -1523,6 +1539,7 @@ public final class MainActivity extends Activity {
         if (tabRow == null) return;
         tabRow.removeAllViews();
         tabRow.addView(tabButtons[TAB_HOME], new LinearLayout.LayoutParams(-2, dp(44)));
+        tabRow.addView(tabButtons[TAB_PRAYER], new LinearLayout.LayoutParams(-2, dp(44)));
         for (int tab : navigationOrder()) {
             if (isNavigationHidden(tab)) continue;
             tabRow.addView(tabButtons[tab], new LinearLayout.LayoutParams(-2, dp(44)));
@@ -5952,6 +5969,19 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
                     strokePath.moveTo(6, 11); strokePath.lineTo(6, 15); strokePath.moveTo(4, 13); strokePath.lineTo(8, 13);
                     fillPath.addCircle(17, 12, 1, Path.Direction.CW);
                     fillPath.addCircle(19, 14, 1, Path.Direction.CW);
+                    break;
+                case TAB_PRAYER:
+                    // Crescent above a small dome.
+                    strokePath.moveTo(15.5f, 2.5f);
+                    strokePath.cubicTo(12.5f, 3.2f, 12.3f, 7.8f, 15.5f, 8.5f);
+                    strokePath.cubicTo(13.2f, 9.6f, 10.2f, 7.6f, 10.6f, 5.2f);
+                    strokePath.cubicTo(11.0f, 3.2f, 13.4f, 1.9f, 15.5f, 2.5f);
+                    strokePath.moveTo(4, 21); strokePath.lineTo(4, 16);
+                    strokePath.cubicTo(4, 12.5f, 8, 11, 12, 10);
+                    strokePath.cubicTo(16, 11, 20, 12.5f, 20, 16);
+                    strokePath.lineTo(20, 21); strokePath.close();
+                    strokePath.moveTo(10, 21); strokePath.lineTo(10, 17.5f);
+                    strokePath.cubicTo(10, 16, 14, 16, 14, 17.5f); strokePath.lineTo(14, 21);
                     break;
                 case TAB_EVENTS:
                     strokePath.addRoundRect(new RectF(3, 5, 21, 21), 2, 2, Path.Direction.CW);
