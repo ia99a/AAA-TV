@@ -437,6 +437,56 @@ final class QuranView extends FrameLayout {
         return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, getResources().getDisplayMetrics()));
     }
 
+    /**
+     * The Quran tile's icon: a mushaf cover in gold outline with an eight-pointed star
+     * (two overlapping squares) at its centre, on a soft round ground.
+     */
+    static final class MushafIcon extends android.graphics.drawable.Drawable {
+        private final Paint ground = new Paint(Paint.ANTI_ALIAS_FLAG), stroke = new Paint(Paint.ANTI_ALIAS_FLAG),
+                fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path star = new Path();
+        private final RectF rect = new RectF();
+
+        MushafIcon() {
+            ground.setColor(0x26E3B469);
+            stroke.setStyle(Paint.Style.STROKE);
+            stroke.setStrokeCap(Paint.Cap.ROUND);
+            stroke.setStrokeJoin(Paint.Join.ROUND);
+            stroke.setColor(GOLD);
+            fill.setColor(GOLD);
+        }
+
+        @Override public void draw(Canvas canvas) {
+            android.graphics.Rect b = getBounds();
+            float size = Math.min(b.width(), b.height()), cx = b.exactCenterX(), cy = b.exactCenterY();
+            canvas.drawCircle(cx, cy, size / 2f, ground);
+            stroke.setStrokeWidth(size * 0.045f);
+            // Cover with a spine on the right, as an Arabic book opens.
+            float w = size * 0.44f, h = size * 0.56f;
+            rect.set(cx - w / 2f, cy - h / 2f, cx + w / 2f, cy + h / 2f);
+            canvas.drawRoundRect(rect, size * 0.05f, size * 0.05f, stroke);
+            canvas.drawLine(rect.right - size * 0.07f, rect.top + size * 0.02f, rect.right - size * 0.07f, rect.bottom - size * 0.02f, stroke);
+            // Eight-pointed star.
+            float r = size * 0.12f, sx = cx - size * 0.03f;
+            star.reset();
+            for (int square = 0; square < 2; square++) {
+                double base = square * Math.PI / 4;
+                for (int i = 0; i < 4; i++) {
+                    double a = base + i * Math.PI / 2;
+                    float x = sx + (float) (Math.cos(a) * r), y = cy + (float) (Math.sin(a) * r);
+                    if (i == 0) star.moveTo(x, y); else star.lineTo(x, y);
+                }
+                star.close();
+            }
+            canvas.drawPath(star, fill);
+            canvas.drawCircle(sx, cy, r * 0.32f, ground);
+        }
+
+        @Override public void setAlpha(int alpha) { }
+        @Override public void setColorFilter(android.graphics.ColorFilter filter) { }
+        @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+    }
+
     /** Flat colour with one faint arch outline, like a mihrab, behind the content. */
     private final class ArchBackground extends View {
         private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);

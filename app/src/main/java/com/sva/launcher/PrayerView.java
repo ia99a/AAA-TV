@@ -46,7 +46,7 @@ final class PrayerView extends FrameLayout {
     private final View progressFill;
     private final FrameLayout progressTrack;
     private final TextView verseTheme, verseText, verseRef;
-    private final Button cityButton;
+    private final Button cityButton, alertButton;
     private final LinearLayout[] columns = new LinearLayout[6];
     private final TextView[] columnName = new TextView[6], columnTime = new TextView[6], columnIqama = new TextView[6];
 
@@ -86,7 +86,7 @@ final class PrayerView extends FrameLayout {
 
         LinearLayout clockColumn = column(context);
         LinearLayout timeLine = new LinearLayout(context);
-        timeLine.setGravity(Gravity.BOTTOM);
+        timeLine.setGravity(Gravity.BOTTOM | Gravity.RIGHT);
         time = text(context, 72, INK, Typeface.create("sans-serif-light", Typeface.NORMAL));
         time.setIncludeFontPadding(false);
         period = text(context, 22, INK_SOFT, Typeface.create("sans-serif-light", Typeface.NORMAL));
@@ -105,8 +105,7 @@ final class PrayerView extends FrameLayout {
         View divider = new View(context);
         divider.setBackgroundColor(LINE);
         LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(dp(1), dp(120));
-        dividerParams.setMarginStart(dp(24));
-        dividerParams.setMarginEnd(dp(32));
+        dividerParams.setMargins(dp(28), 0, dp(28), 0);
         top.addView(divider, dividerParams);
 
         LinearLayout next = column(context);
@@ -128,9 +127,25 @@ final class PrayerView extends FrameLayout {
         cityButton.setContentDescription("تغيير المدينة");
         cityButton.setOnClickListener(v -> nextCity());
         eyebrowRow.addView(cityButton, new LinearLayout.LayoutParams(-2, -2));
+        alertButton = new Button(context);
+        alertButton.setAllCaps(false);
+        alertButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        alertButton.setTextColor(INK_SOFT);
+        alertButton.setMinWidth(0);
+        alertButton.setMinimumWidth(0);
+        alertButton.setMinHeight(0);
+        alertButton.setMinimumHeight(0);
+        alertButton.setPadding(dp(14), dp(6), dp(14), dp(6));
+        alertButton.setBackground(chipBackground());
+        alertButton.setFocusable(true);
+        alertButton.setOnClickListener(v -> toggleAlerts());
+        LinearLayout.LayoutParams alertParams = new LinearLayout.LayoutParams(-2, -2);
+        alertParams.leftMargin = dp(8);
+        eyebrowRow.addView(alertButton, alertParams);
+        refreshAlertButton();
         next.addView(eyebrowRow, new LinearLayout.LayoutParams(-1, -2));
         LinearLayout nameLine = new LinearLayout(context);
-        nameLine.setGravity(Gravity.BOTTOM);
+        nameLine.setGravity(Gravity.BOTTOM | Gravity.RIGHT);
         nextName = text(context, 30, INK, Typeface.create("sans-serif", Typeface.NORMAL));
         nextTime = text(context, 17, INK_SOFT, null);
         nextTime.setPadding(dp(12), 0, dp(12), dp(6));
@@ -145,7 +160,7 @@ final class PrayerView extends FrameLayout {
         progressTrack.setBackground(rounded(LINE, dp(2)));
         progressFill = new View(context);
         progressFill.setBackground(rounded(0xB3E3B469, dp(2)));
-        progressTrack.addView(progressFill, new LayoutParams(0, -1, Gravity.START));
+        progressTrack.addView(progressFill, new LayoutParams(0, -1, Gravity.RIGHT));
         LinearLayout.LayoutParams trackParams = new LinearLayout.LayoutParams(-1, dp(3));
         trackParams.topMargin = dp(10);
         next.addView(progressTrack, trackParams);
@@ -190,6 +205,12 @@ final class PrayerView extends FrameLayout {
             band.addView(col, new LinearLayout.LayoutParams(0, -2, 1));
         }
         content.addView(band, new LinearLayout.LayoutParams(-1, -2));
+        // The launcher is laid out left to right, so each row is reversed to read from the right.
+        mirror(top);
+        mirror(timeLine);
+        mirror(eyebrowRow);
+        mirror(nameLine);
+        mirror(band);
         update();
     }
 
@@ -228,6 +249,7 @@ final class PrayerView extends FrameLayout {
         for (int i = 0; i < PrayerTimes.CITIES.length; i++) if (PrayerTimes.CITIES[i] == city) index = i;
         city = PrayerTimes.CITIES[(index + 1) % PrayerTimes.CITIES.length];
         preferences.edit().putString(PREF_CITY, city.key).apply();
+        PrayerAlerts.schedule(getContext());
         cachedDay = null;
         update();
     }
@@ -356,10 +378,47 @@ final class PrayerView extends FrameLayout {
         if (!TextUtils.equals(view.getText(), value)) view.setText(value);
     }
 
+    private static void mirror(LinearLayout row) {
+        java.util.ArrayList<View> children = new java.util.ArrayList<>();
+        for (int i = 0; i < row.getChildCount(); i++) children.add(row.getChildAt(i));
+        row.removeAllViews();
+        for (int i = children.size() - 1; i >= 0; i--) {
+            View child = children.get(i);
+            LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) child.getLayoutParams();
+            int left = params.leftMargin;
+            params.leftMargin = params.rightMargin;
+            params.rightMargin = left;
+            row.addView(child, params);
+        }
+    }
+
+    private void toggleAlerts() {
+        boolean enabled = !PrayerAlerts.enabled(getContext());
+        preferences.edit().putBoolean(PrayerAlerts.PREF_ENABLED, enabled).apply();
+        PrayerAlerts.schedule(getContext());
+        refreshAlertButton();
+        // Showing the card over other apps needs "display over other apps"; ask once when turning on.
+        if (enabled && !android.provider.Settings.canDrawOverlays(getContext())) {
+            try {
+                getContext().startActivity(new android.content.Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        android.net.Uri.parse("package:" + getContext().getPackageName())));
+            } catch (RuntimeException settingsMissing) {
+                eyebrow.setText("فعّل «العرض فوق التطبيقات» لـ Sva من إعدادات التلفزيون");
+            }
+        }
+    }
+
+    private void refreshAlertButton() {
+        boolean enabled = PrayerAlerts.enabled(getContext());
+        alertButton.setText(enabled ? "التنبيه: يعمل" : "التنبيه: متوقف");
+        alertButton.setTextColor(enabled ? LAMP : INK_SOFT);
+        alertButton.setContentDescription(alertButton.getText());
+    }
+
     private LinearLayout column(Context context) {
         LinearLayout column = new LinearLayout(context);
         column.setOrientation(LinearLayout.VERTICAL);
-        column.setGravity(Gravity.START);
+        column.setGravity(Gravity.RIGHT);
         return column;
     }
 
@@ -368,7 +427,7 @@ final class PrayerView extends FrameLayout {
         view.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         view.setTextColor(color);
         view.setTextDirection(TEXT_DIRECTION_RTL);
-        view.setGravity(Gravity.START);
+        view.setGravity(Gravity.RIGHT);
         if (typeface != null) view.setTypeface(typeface);
         return view;
     }

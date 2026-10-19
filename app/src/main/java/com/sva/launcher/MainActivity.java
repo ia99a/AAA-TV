@@ -254,6 +254,7 @@ public final class MainActivity extends Activity {
             catch (Exception ignored) { selectedCalendarDay = LocalDate.now(); }
             displayedMonth = YearMonth.from(selectedCalendarDay);
         }
+        PrayerAlerts.schedule(this);
         iptv = new IptvRepository(this);
         acceptReminderIntent(getIntent());
         logoLoader = new ChannelLogoLoader(this);
@@ -507,6 +508,8 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         screenActive = true;
+        PrayerAlertToast.foreground = new java.lang.ref.WeakReference<>(this);
+        PrayerAlerts.schedule(this);
         Set<String> freshHidden = HiddenChannels.load(preferences);
         Set<String> freshFavorites = FavoriteChannels.load(preferences);
         if (!freshHidden.equals(hiddenChannelKeys) || !freshFavorites.equals(favoriteChannelKeys)) {
@@ -547,6 +550,7 @@ public final class MainActivity extends Activity {
     }
 
     @Override protected void onPause() {
+        if (PrayerAlertToast.foreground.get() == this) PrayerAlertToast.foreground = new java.lang.ref.WeakReference<>(null);
         screenActive = false;
         handler.removeCallbacks(screensaverIdle);
         if (slideshowTick != null) handler.removeCallbacks(slideshowTick);
@@ -3037,12 +3041,12 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             tile.setElevation(dp(2));
             tile.setOnFocusChangeListener(LiquidTheme::animateFocus);
             Motion.interaction(tile, false);
-            tile.setPadding(dp(10), dp(4), dp(8), dp(4));
+            tile.setPadding(dp(8), dp(4), dp(10), dp(4));
             tile.setTag(packageName);
             ImageView icon = new ImageView(this);
             icon.setImageDrawable(entry.icon);
             icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            tile.addView(icon, new LinearLayout.LayoutParams(dp(36), dp(36)));
+            LinearLayout.LayoutParams appIconParams = new LinearLayout.LayoutParams(dp(36), dp(36));
             int nameColor;
             if (isBranded) {
                 nameColor = whiteCard ? 0xFF101820 : Color.WHITE;
@@ -3051,12 +3055,13 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             }
             TextView name = label(entry.label, compactNavigation ? 12 : 13, nameColor, true);
             name.setTextColor(nameColor);
-            name.setGravity(Gravity.CENTER_VERTICAL);
+            name.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
             name.setMaxLines(1);
             name.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            LinearLayout.LayoutParams appNameParams = new LinearLayout.LayoutParams(0, -1, 1);
-            appNameParams.leftMargin = dp(8);
-            tile.addView(name, appNameParams);
+            // Right to left: the name, then the icon at the right edge.
+            tile.addView(name, new LinearLayout.LayoutParams(0, -1, 1));
+            appIconParams.leftMargin = dp(8);
+            tile.addView(icon, appIconParams);
             tile.setOnClickListener(v -> launchApp(entry.packageName));
             if (nowPlayingSection != null && nowPlayingSection.getVisibility() == View.VISIBLE && musicToggle != null) {
                 tile.setNextFocusUpId(musicToggle.getId());
@@ -3636,17 +3641,15 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         Motion.interaction(tile, false);
         tile.setPadding(dp(8), dp(4), dp(10), dp(4));
         tile.setContentDescription("القرآن");
-        TextView name = label("القرآن", compactNavigation ? 13 : 14, 0xFFF1ECE2, true);
+        // Right to left: the icon at the right edge, the name beside it.
+        TextView name = label("القرآن الكريم", compactNavigation ? 13 : 14, 0xFFF1ECE2, true);
         name.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+        name.setSingleLine(true);
         tile.addView(name, new LinearLayout.LayoutParams(0, -1, 1));
-        TextView icon = label("", 12, 0xFFE3B469, false);
-        NavigationGlyph book = new NavigationGlyph(TAB_QURAN);
-        book.setBounds(0, 0, dp(22), dp(22));
-        book.setGlyphColor(0xFFE3B469);
-        icon.setCompoundDrawables(null, book, null, null);
-        icon.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(36), dp(36));
-        iconParams.leftMargin = dp(8);
+        View icon = new View(this);
+        icon.setBackground(new QuranView.MushafIcon());
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(38), dp(38));
+        iconParams.leftMargin = dp(10);
         tile.addView(icon, iconParams);
         tile.setOnClickListener(v -> selectTab(TAB_QURAN, false));
         return tile;
