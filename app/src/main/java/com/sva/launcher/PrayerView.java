@@ -75,7 +75,7 @@ final class PrayerView extends FrameLayout {
         content = new LinearLayout(context);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setLayoutDirection(LAYOUT_DIRECTION_RTL);
-        content.setPadding(dp(56), dp(28), dp(56), dp(20));
+        content.setPadding(dp(56), dp(20), dp(56), dp(14));
         addView(content, new LayoutParams(-1, -1));
 
         // Top: clock (start = right in RTL) and the next prayer.
@@ -87,14 +87,14 @@ final class PrayerView extends FrameLayout {
         LinearLayout clockColumn = column(context);
         LinearLayout timeLine = new LinearLayout(context);
         timeLine.setGravity(Gravity.BOTTOM);
-        time = text(context, 92, INK, Typeface.create("sans-serif-light", Typeface.NORMAL));
+        time = text(context, 72, INK, Typeface.create("sans-serif-light", Typeface.NORMAL));
         time.setIncludeFontPadding(false);
         period = text(context, 22, INK_SOFT, Typeface.create("sans-serif-light", Typeface.NORMAL));
-        period.setPadding(dp(10), 0, dp(10), dp(14));
+        period.setPadding(dp(10), 0, dp(10), dp(10));
         timeLine.addView(time);
         timeLine.addView(period);
         clockColumn.addView(timeLine);
-        gregorian = text(context, 19, INK, null);
+        gregorian = text(context, 18, INK, null);
         hijri = text(context, 16, INK_SOFT, null);
         ramadan = text(context, 13, INK_FAINT, null);
         addSpaced(clockColumn, gregorian, 6);
@@ -104,7 +104,7 @@ final class PrayerView extends FrameLayout {
 
         View divider = new View(context);
         divider.setBackgroundColor(LINE);
-        LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(dp(1), dp(150));
+        LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(dp(1), dp(120));
         dividerParams.setMarginStart(dp(24));
         dividerParams.setMarginEnd(dp(32));
         top.addView(divider, dividerParams);
@@ -131,13 +131,13 @@ final class PrayerView extends FrameLayout {
         next.addView(eyebrowRow, new LinearLayout.LayoutParams(-1, -2));
         LinearLayout nameLine = new LinearLayout(context);
         nameLine.setGravity(Gravity.BOTTOM);
-        nextName = text(context, 36, INK, Typeface.create("sans-serif", Typeface.NORMAL));
+        nextName = text(context, 30, INK, Typeface.create("sans-serif", Typeface.NORMAL));
         nextTime = text(context, 17, INK_SOFT, null);
         nextTime.setPadding(dp(12), 0, dp(12), dp(6));
         nameLine.addView(nextName);
         nameLine.addView(nextTime);
         addSpaced(next, nameLine, 4);
-        countdown = text(context, 22, LAMP, Typeface.create("sans-serif-light", Typeface.NORMAL));
+        countdown = text(context, 20, LAMP, Typeface.create("sans-serif-light", Typeface.NORMAL));
         addSpaced(next, countdown, 2);
         iqamaLine = text(context, 14, INK_SOFT, null);
         addSpaced(next, iqamaLine, 2);
@@ -156,32 +156,32 @@ final class PrayerView extends FrameLayout {
         // Middle: the verse for today.
         LinearLayout verse = column(context);
         verseTheme = text(context, 13, LAMP, null);
-        verseText = text(context, 24, INK, Typeface.create(Typeface.SERIF, Typeface.NORMAL));
-        verseText.setLineSpacing(0, 1.3f);
-        verseText.setMaxLines(3);
+        verseText = text(context, 22, INK, Typeface.create(Typeface.SERIF, Typeface.NORMAL));
+        verseText.setLineSpacing(0, 1.15f);
+        verseText.setMaxLines(2);
         verseText.setEllipsize(TextUtils.TruncateAt.END);
         verseRef = text(context, 12, INK_FAINT, null);
         verse.addView(verseTheme);
         addSpaced(verse, verseText, 4);
         addSpaced(verse, verseRef, 2);
         LinearLayout.LayoutParams verseParams = new LinearLayout.LayoutParams(-1, -2);
-        verseParams.topMargin = dp(14);
+        verseParams.topMargin = dp(10);
         content.addView(verse, verseParams);
 
         // Bottom: all of today's times.
         View rule = new View(context);
         rule.setBackgroundColor(LINE);
         LinearLayout.LayoutParams ruleParams = new LinearLayout.LayoutParams(-1, dp(1));
-        ruleParams.topMargin = dp(16);
+        ruleParams.topMargin = dp(12);
         content.addView(rule, ruleParams);
         LinearLayout band = new LinearLayout(context);
         band.setOrientation(LinearLayout.HORIZONTAL);
         for (int i = 0; i < 6; i++) {
             LinearLayout col = column(context);
-            col.setPadding(dp(10), dp(12), dp(10), 0);
+            col.setPadding(dp(10), dp(10), dp(10), 0);
             columnName[i] = text(context, 14, INK_SOFT, null);
             columnName[i].setText(PrayerTimes.NAMES[i]);
-            columnTime[i] = text(context, i == PrayerTimes.SUNRISE ? 20 : 24, INK, Typeface.create("sans-serif-light", Typeface.NORMAL));
+            columnTime[i] = text(context, i == PrayerTimes.SUNRISE ? 18 : 22, INK, Typeface.create("sans-serif-light", Typeface.NORMAL));
             columnIqama[i] = text(context, 12, INK_FAINT, null);
             col.addView(columnName[i]);
             addSpaced(col, columnTime[i], 2);
