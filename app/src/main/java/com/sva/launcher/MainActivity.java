@@ -99,7 +99,7 @@ import org.json.JSONObject;
 public final class MainActivity extends Activity {
     private static final int TAB_HOME = 0, TAB_TV = 1, TAB_GAMES = 2, TAB_EVENTS = 3, TAB_SAVED = 4, TAB_PRAYER = 5;
     private static final int LAST_TAB = TAB_PRAYER;
-    private static final String[] TAB_TITLES = {"Home", "Live TV", "Games", "Events", "Saved", "الصلاة"};
+    private static final String[] TAB_TITLES = {"آمر", "Live TV", "Games", "تاريخك", "Saved", "الصلاة"};
     private static final String PREF_HIDE_LIVE_TV = "hideLiveTvNavigation";
     private static final String PREF_HIDE_GAMES = "hideGamesNavigation";
     private static final String PREF_HIDE_EVENTS = "hideEventsNavigation";
@@ -660,8 +660,8 @@ public final class MainActivity extends Activity {
                 / getResources().getDisplayMetrics().density);
         compactNavigation = screenWidthDp < 800;
         int outerPadding = compactNavigation ? 16 : 33;
-        int dockHeight = 96;
-        navigation.setPadding(dp(outerPadding), dp(16), dp(outerPadding), dp(22));
+        int dockHeight = 78;
+        navigation.setPadding(dp(outerPadding), dp(12), dp(outerPadding), dp(14));
         tabShell.addView(navigation, new LinearLayout.LayoutParams(-1, dp(dockHeight)));
 
         navigation.setClipChildren(false);
@@ -674,7 +674,7 @@ public final class MainActivity extends Activity {
         navbar.setBackground(roundedShape(light ? 0xE9F9FCF8 : 0xD508181A,
                 light ? 0x887C9E9A : 0x55C4D9D2, 1, 24));
         navbar.setElevation(dp(6));
-        navigation.addView(navbar, new LinearLayout.LayoutParams(-2, dp(58)));
+        navigation.addView(navbar, new LinearLayout.LayoutParams(-2, dp(50)));
 
         int weatherMaxWidth = compactNavigation ? 165 : 195;
         HorizontalScrollView tabScroller = new HorizontalScrollView(this);
@@ -683,7 +683,7 @@ public final class MainActivity extends Activity {
         tabScroller.setFillViewport(false);
         tabScroller.setClipChildren(true);
         tabScroller.setClipToPadding(false);
-        LinearLayout.LayoutParams tabGroupParams = new LinearLayout.LayoutParams(-2, dp(52));
+        LinearLayout.LayoutParams tabGroupParams = new LinearLayout.LayoutParams(-2, dp(46));
         navbar.addView(tabScroller, tabGroupParams);
         tabRow = new LinearLayout(this);
         tabRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -697,12 +697,12 @@ public final class MainActivity extends Activity {
             button.setId(View.generateViewId());
             button.setMinWidth(0);
             button.setMinimumWidth(0);
-            button.setTextSize(14);
+            button.setTextSize(13);
             int horizontalButtonPadding = compactNavigation ? 12 : (i == TAB_HOME ? 18 : 10);
             button.setPadding(dp(horizontalButtonPadding), 0, dp(horizontalButtonPadding), 0);
             NavigationGlyph glyph = new NavigationGlyph(i);
             navigationGlyphs[i] = glyph;
-            glyph.setBounds(0, 0, dp(21), dp(21));
+            glyph.setBounds(0, 0, dp(18), dp(18));
             button.setCompoundDrawablesRelative(glyph, null, null, null);
             button.setCompoundDrawablePadding(dp(7));
             GradientDrawable selectedPill = new GradientDrawable();
@@ -817,7 +817,7 @@ public final class MainActivity extends Activity {
         systemShortcuts.setClipChildren(false);
         systemShortcuts.setClipToPadding(false);
         systemShortcuts.setPadding(dp(3), dp(3), dp(3), dp(3));
-        navbar.addView(systemShortcuts, new LinearLayout.LayoutParams(-2, dp(52)));
+        navbar.addView(systemShortcuts, new LinearLayout.LayoutParams(-2, dp(46)));
         addTopIcon(systemShortcuts, "Network", R.drawable.ic_network, this::openNetworkSettings);
         addTopIcon(systemShortcuts, "Android Settings", R.drawable.ic_android_settings, this::openAndroidSettings);
         addTopIcon(systemShortcuts, "Launcher Settings", R.drawable.ic_launcher_settings, this::showSettings);
@@ -877,7 +877,7 @@ public final class MainActivity extends Activity {
         homeCalendarCard.addView(calendarCopy, new LinearLayout.LayoutParams(0, -2, 1));
         homeCalendarEyebrow = label("UP NEXT", 10, light ? LiquidTheme.secondaryText(this) : 0xFFBEC4CD, false);
         calendarCopy.addView(homeCalendarEyebrow);
-        homeCalendarTitle = label("No events today", 16, light ? LiquidTheme.text(this) : Color.WHITE, true);
+        homeCalendarTitle = label("لا مناسبات اليوم", 16, light ? LiquidTheme.text(this) : Color.WHITE, true);
         homeCalendarTitle.setSingleLine(true);
         homeCalendarTitle.setMaxLines(1);
         homeCalendarTitle.setEllipsize(TextUtils.TruncateAt.END);
@@ -1347,7 +1347,7 @@ public final class MainActivity extends Activity {
     private boolean handleCalendarDirection(View focused, int direction) {
         if (focused instanceof CalendarDayButton && focused.getTag() instanceof LocalDate) {
             LocalDate day = (LocalDate) focused.getTag();
-            int delta = direction == View.FOCUS_LEFT ? -1 : direction == View.FOCUS_RIGHT ? 1
+            int delta = direction == View.FOCUS_LEFT ? 1 : direction == View.FOCUS_RIGHT ? -1
                     : direction == View.FOCUS_UP ? -7 : 7;
             LocalDate target = day.plusDays(delta);
             if (YearMonth.from(target).equals(displayedMonth)) {
@@ -1542,11 +1542,11 @@ public final class MainActivity extends Activity {
     private void rebuildNavigationButtons() {
         if (tabRow == null) return;
         tabRow.removeAllViews();
-        tabRow.addView(tabButtons[TAB_HOME], new LinearLayout.LayoutParams(-2, dp(44)));
-        tabRow.addView(tabButtons[TAB_PRAYER], new LinearLayout.LayoutParams(-2, dp(44)));
+        tabRow.addView(tabButtons[TAB_HOME], new LinearLayout.LayoutParams(-2, dp(38)));
+        tabRow.addView(tabButtons[TAB_PRAYER], new LinearLayout.LayoutParams(-2, dp(38)));
         for (int tab : navigationOrder()) {
             if (isNavigationHidden(tab)) continue;
-            tabRow.addView(tabButtons[tab], new LinearLayout.LayoutParams(-2, dp(44)));
+            tabRow.addView(tabButtons[tab], new LinearLayout.LayoutParams(-2, dp(38)));
         }
     }
 
@@ -1576,7 +1576,8 @@ public final class MainActivity extends Activity {
         Button backButton = actionButton("‹");
         backButton.setTextSize(30);
         alignCalendarArrow(backButton);
-        backButton.setContentDescription("Back to Home");
+        backButton.setText("›");
+        backButton.setContentDescription("رجوع");
         backButton.setBackground(calendarGlassShape(
                 light ? LiquidTheme.surface(this) : 0xC91A1D26,
                 light ? LiquidTheme.border(this) : 0xAAFFFFFF, 28));
@@ -1585,7 +1586,7 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(dp(52), dp(52));
         backParams.setMargins(dp(2), dp(2), dp(14), dp(2));
         monthHeading.addView(backButton, backParams);
-        monthTitle = label("Calendar", 32, Color.WHITE, true);
+        monthTitle = label("تاريخك", 32, Color.WHITE, true);
         monthTitle.setTextColor(LiquidTheme.text(this));
         monthHeading.addView(monthTitle, new LinearLayout.LayoutParams(-2, -2));
         LinearLayout eventSummary = new LinearLayout(this);
@@ -1593,12 +1594,15 @@ public final class MainActivity extends Activity {
         eventSummary.setGravity(Gravity.CENTER_VERTICAL);
         eventSummary.setPadding(dp(20), 0, dp(20), 0);
         calendarHeaderDate = label("", 10, LiquidTheme.accent(this), true);
-        calendarHeaderDate.setLetterSpacing(.1f);
+        calendarHeaderDate.setLetterSpacing(0f);
+        calendarHeaderDate.setTextSize(12);
+        calendarHeaderDate.setGravity(Gravity.RIGHT);
         eventSummary.addView(calendarHeaderDate);
         calendarHeaderEvents = label("", 14, LiquidTheme.text(this), true);
         calendarHeaderEvents.setMaxLines(3);
         calendarHeaderEvents.setEllipsize(TextUtils.TruncateAt.END);
         calendarHeaderEvents.setPadding(0, dp(4), 0, 0);
+        calendarHeaderEvents.setGravity(Gravity.RIGHT);
         eventSummary.addView(calendarHeaderEvents);
         monthHeading.addView(eventSummary, new LinearLayout.LayoutParams(0, -1, 1));
         LinearLayout monthSwitcher = new LinearLayout(this);
@@ -1609,15 +1613,15 @@ public final class MainActivity extends Activity {
                 light ? LiquidTheme.surface(this) : 0xC91A1D26,
                 light ? LiquidTheme.border(this) : 0xAAFFFFFF, 30));
         monthHeading.addView(monthSwitcher, new LinearLayout.LayoutParams(dp(200), dp(52)));
-        previousMonthButton = actionButton("‹");
+        previousMonthButton = actionButton("›");
         previousMonthButton.setTextSize(28);
         alignCalendarArrow(previousMonthButton);
-        previousMonthButton.setContentDescription("Previous month");
+        previousMonthButton.setContentDescription("الشهر السابق");
         styleCalendarHeaderControl(previousMonthButton);
         LinearLayout.LayoutParams prevParams = new LinearLayout.LayoutParams(dp(46), dp(46));
         prevParams.setMargins(dp(3), dp(3), dp(1), dp(3));
         monthSwitcher.addView(previousMonthButton, prevParams);
-        Button todayButton = actionButton("Today");
+        Button todayButton = actionButton("اليوم");
         todayButton.setTextSize(14);
         styleCalendarHeaderControl(todayButton);
         todayButton.setOnClickListener(v -> {
@@ -1628,10 +1632,10 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams todayParams = new LinearLayout.LayoutParams(0, dp(46), 1);
         todayParams.setMargins(dp(1), dp(3), dp(1), dp(3));
         monthSwitcher.addView(todayButton, todayParams);
-        nextMonthButton = actionButton("›");
+        nextMonthButton = actionButton("‹");
         nextMonthButton.setTextSize(28);
         alignCalendarArrow(nextMonthButton);
-        nextMonthButton.setContentDescription("Next month");
+        nextMonthButton.setContentDescription("الشهر التالي");
         styleCalendarHeaderControl(nextMonthButton);
         nextMonthButton.setId(View.generateViewId());
         LinearLayout.LayoutParams nextParams = new LinearLayout.LayoutParams(dp(46), dp(46));
@@ -1672,11 +1676,44 @@ public final class MainActivity extends Activity {
                 super.dispatchDraw(canvas);
             }
         };
+        // Right-to-left: the month reads from the right, as in an Arabic calendar.
+        mirrorRow(monthSwitcher);
+        mirrorRow(monthHeading);
         calendarMonthGrid.setColumnCount(7);
         calendarMonthGrid.setClipChildren(false);
         calendarMonthGrid.setClipToPadding(false);
         eventsContent.addView(calendarMonthGrid, new LinearLayout.LayoutParams(-1, -2));
 
+    }
+
+    /** Reverses a horizontal row and swaps its children's side margins, for right-to-left layouts. */
+    private void mirrorRow(LinearLayout row) {
+        ArrayList<View> children = new ArrayList<>();
+        for (int i = 0; i < row.getChildCount(); i++) children.add(row.getChildAt(i));
+        row.removeAllViews();
+        for (int i = children.size() - 1; i >= 0; i--) {
+            View child = children.get(i);
+            ViewGroup.LayoutParams params = child.getLayoutParams();
+            if (params instanceof ViewGroup.MarginLayoutParams) {
+                ViewGroup.MarginLayoutParams margins = (ViewGroup.MarginLayoutParams) params;
+                int left = margins.leftMargin;
+                margins.leftMargin = margins.rightMargin;
+                margins.rightMargin = left;
+            }
+            row.addView(child, params);
+        }
+    }
+
+    private static final String[] ARABIC_WEEKDAYS = {"الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"};
+
+    /** A multi-day holiday drawn as one continuous bar under the days it covers. */
+    static final class CalendarBar {
+        final String label;
+        final int color;
+        final boolean starts, ends;
+        CalendarBar(String label, int color, boolean starts, boolean ends) {
+            this.label = label; this.color = color; this.starts = starts; this.ends = ends;
+        }
     }
 
     private void renderMonthCalendar(List<PublicCalendarRepository.Event> events) {
@@ -1685,7 +1722,7 @@ public final class MainActivity extends Activity {
         renderedMonth = displayedMonth;
         renderedToday = LocalDate.now();
         renderedCalendarStamp = preferences.getLong("publicCalendarUpdatedAt", 0L);
-        String monthName = displayedMonth.format(java.time.format.DateTimeFormatter.ofPattern("MMMM", Locale.getDefault()));
+        String monthName = ArabicFormat.month(displayedMonth.getMonthValue());
         SpannableString headingText = new SpannableString(monthName + " " + displayedMonth.getYear());
         headingText.setSpan(new ForegroundColorSpan(light ? LiquidTheme.secondaryText(this) : 0xFFAFC6D2), monthName.length() + 1,
                 headingText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -1696,9 +1733,8 @@ public final class MainActivity extends Activity {
         int widthDp = Math.round(getResources().getDisplayMetrics().widthPixels /
                 getResources().getDisplayMetrics().density);
         int cellWidth = Math.max(58, (widthDp - 56) / 7);
-        for (int i = 0; i < 7; i++) {
-            DayOfWeek weekday = DayOfWeek.SUNDAY.plus(i);
-            TextView heading = label(weekday.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+        for (int i = 6; i >= 0; i--) {
+            TextView heading = label(ARABIC_WEEKDAYS[i],
                     13, light ? LiquidTheme.secondaryText(this) : 0xFFC6D6DB, false);
             heading.setGravity(Gravity.CENTER);
             heading.setLetterSpacing(.1f);
@@ -1715,7 +1751,8 @@ public final class MainActivity extends Activity {
         int rows = cells / 7;
         int fittedHeight = (Math.max(300, screenHeightDp - 205) - 34) / rows - 7;
         int cellHeight = Math.max(58, Math.min(94, Math.min(cellWidth, fittedHeight)));
-        for (int i = 0; i < cells; i++) {
+        for (int visual = 0; visual < cells; visual++) {
+            int i = (visual / 7) * 7 + (6 - visual % 7);
             int dayNumber = i - offset + 1;
             View cell;
             if (dayNumber < 1 || dayNumber > displayedMonth.lengthOfMonth()) {
@@ -1723,8 +1760,8 @@ public final class MainActivity extends Activity {
                         ? displayedMonth.minusMonths(1).lengthOfMonth() + dayNumber
                         : dayNumber - displayedMonth.lengthOfMonth()), 20,
                         light ? 0x554D6968 : 0xFF78818A, false);
-                overflow.setGravity(Gravity.TOP | Gravity.LEFT);
-                overflow.setPadding(dp(13), dp(8), 0, 0);
+                overflow.setGravity(Gravity.TOP | Gravity.RIGHT);
+                overflow.setPadding(0, dp(8), dp(13), 0);
                 overflow.setBackgroundColor(Color.TRANSPARENT);
                 cell = overflow;
             } else {
@@ -1733,15 +1770,27 @@ public final class MainActivity extends Activity {
                 for (PublicCalendarRepository.Event event : events)
                     if (CalendarDates.includes(event, day, zone)) dayEvents.add(event);
                 ArrayList<String> eventTitles = new ArrayList<>();
-                for (PublicCalendarRepository.Event event : dayEvents) eventTitles.add(event.title);
+                ArrayList<CalendarBar> bars = new ArrayList<>();
+                for (PublicCalendarRepository.Event event : dayEvents) {
+                    int kind = SaudiCalendar.kindOf(event.title);
+                    LocalDate first = java.time.Instant.ofEpochMilli(event.startMs).atZone(zone).toLocalDate();
+                    LocalDate last = java.time.Instant.ofEpochMilli(event.endMs - 1).atZone(zone).toLocalDate();
+                    long span = java.time.temporal.ChronoUnit.DAYS.between(first, last) + 1;
+                    boolean asBar = kind == SaudiCalendar.SCHOOL ? span > 1 : kind >= 0 && span > 3;
+                    if (!asBar) { eventTitles.add(event.title); continue; }
+                    // The name appears once, as a chip on the first day; the rest of the span is a thin line.
+                    if (day.equals(first)) eventTitles.add(event.title);
+                    bars.add(new CalendarBar("", calendarEventDotColor(event.title),
+                            day.equals(first), day.equals(last)));
+                }
                 CalendarDayButton dateButton = new CalendarDayButton(this);
                 dateButton.setContent(dayNumber, eventTitles, day.equals(LocalDate.now()));
                 dateButton.setHijri(SaudiCalendar.hijriCellLabel(day));
+                dateButton.setBars(bars);
                 dateButton.setId(View.generateViewId());
                 dateButton.setTag(day);
-                StringBuilder dayDescription = new StringBuilder(day.format(
-                        java.time.format.DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale.getDefault())))
-                        .append(". ");
+                StringBuilder dayDescription = new StringBuilder(ArabicFormat.gregorian(day))
+                        .append(". ").append(ArabicFormat.hijri(day));
                 for (PublicCalendarRepository.Event event : dayEvents)
                     dayDescription.append(". ").append(event.title);
                 dateButton.setContentDescription(dayDescription);
@@ -1776,15 +1825,13 @@ public final class MainActivity extends Activity {
 
     private void updateCalendarHeader(LocalDate day) {
         if (calendarHeaderDate == null) return;
-        calendarHeaderDate.setText(day.format(java.time.format.DateTimeFormatter.ofPattern(
-                "EEEE, d MMM", Locale.getDefault())).toUpperCase(Locale.getDefault())
-                + "  ·  " + ArabicFormat.hijri(day));
+        calendarHeaderDate.setText(ArabicFormat.gregorian(day) + "  ·  " + ArabicFormat.hijri(day));
         ArrayList<String> titles = new ArrayList<>();
         ZoneId zone = ZoneId.systemDefault();
         for (PublicCalendarRepository.Event event : cachedCalendarEvents()) {
             if (CalendarDates.includes(event, day, zone)) titles.add(event.title);
         }
-        calendarHeaderEvents.setText(titles.isEmpty() ? "No events planned" : TextUtils.join(" · ", titles));
+        calendarHeaderEvents.setText(titles.isEmpty() ? "لا توجد مناسبات" : TextUtils.join(" · ", titles));
     }
 
     private void selectCalendarDay(LocalDate day) {
@@ -1954,7 +2001,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         DateFormat format = preferences.getBoolean("24h", false)
                 ? new java.text.SimpleDateFormat("HH:mm", Locale.getDefault())
                 : new java.text.SimpleDateFormat("h:mm a", Locale.getDefault());
-        String timing = event.allDay ? "All day" : format.format(new Date(event.startMs))
+        String timing = event.allDay ? "طوال اليوم" : format.format(new Date(event.startMs))
                 + " – " + format.format(new Date(event.endMs));
         card.addView(label(timing, 13, LiquidTheme.secondaryText(this), false));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
@@ -1977,6 +2024,8 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
 
     private int dayNumber;
     private String hijriLabel = "";
+    private final ArrayList<CalendarBar> bars = new ArrayList<>();
+    private final Paint barPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint hijriPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final ArrayList<String> eventTitles = new ArrayList<>();
     private boolean today;
@@ -2046,6 +2095,12 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         invalidate();
     }
 
+    public void setBars(List<CalendarBar> values) {
+        bars.clear();
+        if (values != null) bars.addAll(values);
+        invalidate();
+    }
+
     public void setHijri(String label) {
         hijriLabel = label == null ? "" : label;
         invalidate();
@@ -2083,92 +2138,84 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
                 getHeight() - getPaddingBottom()
         );
 
-        final int primary =
-                LiquidTheme.text(MainActivity.this);
-
-        final int secondary =
-                LiquidTheme.secondaryText(MainActivity.this);
-
-        final int eventColor =
-                0xFFFFA0AE;
-
+        final int primary = LiquidTheme.text(MainActivity.this);
+        final int secondary = LiquidTheme.secondaryText(MainActivity.this);
         datePaint.setColor(primary);
-        weekdayPaint.setColor(secondary);
-        moonPaint.setColor(secondary);
-        eventPaint.setColor(eventColor);
 
         final float left = getPaddingLeft();
-        final float right =
-                getWidth() - getPaddingRight();
+        final float right = getWidth() - getPaddingRight();
 
-        /*
-         * =========================================================
-         * ROW 1
-         *
-         * 29  THU                              ●
-         * =========================================================
-         */
-
-        Paint.FontMetrics dateFm =
-                datePaint.getFontMetrics();
-
-        float row1Baseline =
-                getPaddingTop() - dateFm.ascent;
-
-        canvas.drawText(
-                String.valueOf(dayNumber),
-                left,
-                row1Baseline,
-                datePaint
-        );
-
-        /*
-         * TODAY DOT
-         */
-
-        if (today) {
-
-            todayPaint.setColor(
-                    LiquidTheme.isLight(MainActivity.this)
-                            ? 0xFFD32F2F
-                            : 0xFFFFE0E0
-            );
-
-            float radius = dp(3);
-
-            canvas.drawCircle(
-                    right - radius,
-                    getPaddingTop() + radius,
-                    radius,
-                    todayPaint
-            );
-        }
+        // Right-to-left cell: Gregorian day on the right, Hijri day on the left.
+        Paint.FontMetrics dateFm = datePaint.getFontMetrics();
+        float row1Baseline = getPaddingTop() - dateFm.ascent;
+        datePaint.setTextAlign(Paint.Align.RIGHT);
+        canvas.drawText(String.valueOf(dayNumber), right, row1Baseline, datePaint);
+        datePaint.setTextAlign(Paint.Align.LEFT);
 
         if (!hijriLabel.isEmpty()) {
             hijriPaint.setTextSize(sp(11));
             hijriPaint.setColor(secondary);
-            hijriPaint.setTextAlign(Paint.Align.RIGHT);
-            canvas.drawText(hijriLabel, right - dp(10), row1Baseline, hijriPaint);
+            hijriPaint.setTextAlign(Paint.Align.LEFT);
+            canvas.drawText(hijriLabel, left + dp(today ? 10 : 2), row1Baseline, hijriPaint);
         }
 
+        if (today) {
+            todayPaint.setColor(LiquidTheme.isLight(MainActivity.this) ? 0xFFD32F2F : 0xFFFFE0E0);
+            float radius = dp(3);
+            canvas.drawCircle(left + radius, getPaddingTop() + radius, radius, todayPaint);
+        }
+
+        float barHeight = dp(4);
+        float chipLimit = getHeight() - getPaddingBottom() - dp(2) - bars.size() * (barHeight + dp(2));
+
+        // Single-day occasions as chips: dot on the right, text reading right to left.
         float chipTop = row1Baseline + dp(3);
         float chipHeight = dp(13);
         for (int i = 0; i < eventTitles.size(); i++) {
-            if (chipTop + chipHeight > getHeight() - getPaddingBottom()) break;
+            if (chipTop + chipHeight > chipLimit) break;
             String eventTitle = eventTitles.get(i);
-            int chipColor = calendarEventColor(eventTitle);
-            chipPaint.setColor(chipColor);
+            chipPaint.setColor(calendarEventColor(eventTitle));
             canvas.drawRoundRect(left, chipTop, right, chipTop + chipHeight, dp(7), dp(7), chipPaint);
             todayPaint.setColor(calendarEventDotColor(eventTitle));
-            canvas.drawCircle(left + dp(6), chipTop + chipHeight / 2f, dp(3), todayPaint);
+            canvas.drawCircle(right - dp(6), chipTop + chipHeight / 2f, dp(3), todayPaint);
             String title = ellipsize(eventTitle, chipTextPaint, right - left - dp(20));
             Paint.FontMetrics chipMetrics = chipTextPaint.getFontMetrics();
             float baseline = chipTop + (chipHeight - chipMetrics.bottom + chipMetrics.top) / 2f - chipMetrics.top;
-            canvas.drawText(title, left + dp(12), baseline, chipTextPaint);
+            chipTextPaint.setTextAlign(Paint.Align.RIGHT);
+            canvas.drawText(title, right - dp(12), baseline, chipTextPaint);
+            chipTextPaint.setTextAlign(Paint.Align.LEFT);
             chipTop += chipHeight + dp(2);
         }
 
         canvas.restoreToCount(save);
+
+        // Bars are drawn outside the padding clip so neighbouring days join into one line.
+        // Multi-day holidays: one bar per holiday along the bottom, labelled where it starts.
+        float barBottom = getHeight() - getPaddingBottom() - dp(2);
+        for (int i = bars.size() - 1; i >= 0; i--) {
+            CalendarBar bar = bars.get(i);
+            float top = barBottom - barHeight;
+            // Bars run edge to edge so neighbouring days join up; ends are rounded.
+            float barRight = bar.starts ? right : getWidth();
+            float barLeft = bar.ends ? left : 0;
+            barPaint.setColor(bar.color);
+            float r = dp(2), startR = bar.starts ? r : 0, endR = bar.ends ? r : 0;
+            // Corner radii: top-left, top-right, bottom-right, bottom-left (x, y pairs).
+            float[] radii = {endR, endR, startR, startR, startR, startR, endR, endR};
+            Path barPath = new Path();
+            barPath.addRoundRect(new RectF(barLeft, top, barRight, barBottom), radii, Path.Direction.CW);
+            canvas.drawPath(barPath, barPaint);
+            if (!bar.label.isEmpty()) {
+                chipTextPaint.setTextAlign(Paint.Align.RIGHT);
+                String title = ellipsize(bar.label, chipTextPaint, right - left - dp(8));
+                Paint.FontMetrics metrics = chipTextPaint.getFontMetrics();
+                float baseline = top + (barHeight - metrics.bottom + metrics.top) / 2f - metrics.top;
+                canvas.drawText(title, right - dp(6), baseline, chipTextPaint);
+                chipTextPaint.setTextAlign(Paint.Align.LEFT);
+            }
+            barBottom = top - dp(2);
+        }
+
     }
 
     private int calendarEventColor(String title) {
@@ -2760,9 +2807,9 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
                     : new java.text.SimpleDateFormat("EEE · h:mm a", Locale.getDefault()).format(new Date(nextEvent.startMs)));
         } else {
             homeCalendarEyebrow.setText("TODAY");
-            homeCalendarTitle.setText("No events today");
+            homeCalendarTitle.setText("لا مناسبات اليوم");
             homeCalendarSubtitle.setText(preferences.getString("publicCalendarUrl", "").isEmpty()
-                    ? "Add a calendar in Settings" : "Your calendar is clear");
+                    ? ArabicFormat.hijri(today) : ArabicFormat.hijri(today));
         }
     }
 
@@ -3396,7 +3443,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         icon.setOnFocusChangeListener(LiquidTheme::animateContainedFocus);
         icon.setOnClickListener(v -> action.run());
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                dp(compactNavigation ? 34 : 40), dp(compactNavigation ? 34 : 40));
+                dp(compactNavigation ? 32 : 36), dp(compactNavigation ? 32 : 36));
         lp.setMargins(dp(2), 0, dp(2), 0);
         container.addView(icon, lp);
     }

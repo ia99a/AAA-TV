@@ -39,6 +39,8 @@ final class ArabicFormat {
 
     static String clockWithPeriod(LocalDateTime time) { return clock(time) + " " + period(time); }
 
+    static String month(int monthValue) { return MONTHS[monthValue - 1]; }
+
     static String gregorian(LocalDate day) {
         return WEEKDAYS[day.getDayOfWeek().getValue() - 1] + "، " + digits(day.getDayOfMonth()) + " "
                 + MONTHS[day.getMonthValue() - 1] + " " + digits(day.getYear());
