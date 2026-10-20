@@ -97,9 +97,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 public final class MainActivity extends Activity {
-    private static final int TAB_HOME = 0, TAB_TV = 1, TAB_GAMES = 2, TAB_EVENTS = 3, TAB_SAVED = 4, TAB_PRAYER = 5, TAB_QURAN = 6, TAB_HARAM = 7;
-    private static final int LAST_TAB = TAB_HARAM;
-    private static final String[] TAB_TITLES = {"آمر", "Live TV", "Games", "تاريخك", "Saved", "الصلاة", "القرآن", "الحرم"};
+    private static final int TAB_HOME = 0, TAB_TV = 1, TAB_GAMES = 2, TAB_EVENTS = 3, TAB_SAVED = 4, TAB_PRAYER = 5, TAB_QURAN = 6, TAB_HARAM = 7, TAB_GALLERY = 8;
+    private static final int LAST_TAB = TAB_GALLERY;
+    private static final String[] TAB_TITLES = {"آمر", "Live TV", "Games", "تاريخك", "Saved", "الصلاة", "القرآن", "الحرم", "الخلفيات"};
     private static final String PREF_HIDE_LIVE_TV = "hideLiveTvNavigation";
     private static final String PREF_HIDE_GAMES = "hideGamesNavigation";
     private static final String PREF_HIDE_EVENTS = "hideEventsNavigation";
@@ -155,6 +155,7 @@ public final class MainActivity extends Activity {
     private QuranView quranView;
     private FrameLayout sceneRoot;
     private HaramView haramView;
+    private GalleryView galleryView;
     private QuickSettingsView quickSettings;
     private LinearLayout launcherShell;
     private LinearLayout root, homeContent, liveContent, gamesContent, eventsContent, savedContent;
@@ -540,6 +541,7 @@ public final class MainActivity extends Activity {
         // Never interrupt a recitation with the screensaver.
         if (quranView != null && quranView.isPlaying()) playing = true;
         if (haramView != null && haramView.getVisibility() == View.VISIBLE) playing = true;
+        if (galleryView != null && galleryView.getVisibility() == View.VISIBLE) playing = true;
         if (screenActive && settingsScreen == null && hasWindowFocus() && !playing) {
             startActivity(new Intent(this, ScreensaverPreviewActivity.class));
         } else if (screenActive) scheduleScreensaverIdle();
@@ -563,6 +565,7 @@ public final class MainActivity extends Activity {
         PrayerAlertToast.foreground = new java.lang.ref.WeakReference<>(this);
         PrayerAlerts.schedule(this);
         if (activeTab == TAB_HARAM && haramView != null && haramView.getVisibility() == View.VISIBLE) haramView.start();
+        if (activeTab == TAB_GALLERY && galleryView != null && galleryView.getVisibility() == View.VISIBLE) galleryView.start();
         Set<String> freshHidden = HiddenChannels.load(preferences);
         Set<String> freshFavorites = FavoriteChannels.load(preferences);
         if (!freshHidden.equals(hiddenChannelKeys) || !freshFavorites.equals(favoriteChannelKeys)) {
@@ -621,6 +624,7 @@ public final class MainActivity extends Activity {
         // Leaving the launcher (opening YouTube, say) pauses the recitation.
         if (quranView != null) quranView.pause();
         if (haramView != null) haramView.pause();
+        if (galleryView != null) galleryView.stop();
         super.onStop();
     }
 
@@ -912,6 +916,11 @@ public final class MainActivity extends Activity {
         tabPages[TAB_HARAM] = haramView;
         sceneRoot.addView(haramView, new FrameLayout.LayoutParams(-1, -1));
         linkTabEntry(TAB_HARAM, haramView.entryFocus());
+        galleryView = new GalleryView(this, preferences);
+        galleryView.setVisibility(View.GONE);
+        tabPages[TAB_GALLERY] = galleryView;
+        sceneRoot.addView(galleryView, new FrameLayout.LayoutParams(-1, -1));
+        linkTabEntry(TAB_GALLERY, galleryView.entryFocus());
         quickSettings = new QuickSettingsView(this, preferences, new QuickSettingsView.Listener() {
             @Override public void onMoodChanged(String mood) { clearPhotoWallpapers(); applyMood(); }
             @Override public void onCalmColourChanged(int index) { clearPhotoWallpapers(); applyMood(); }
@@ -1337,6 +1346,8 @@ public final class MainActivity extends Activity {
         if (quickSettings != null && quickSettings.isOpen()) return quickSettings.handleKey(event);
         if (activeTab == TAB_HARAM && haramView != null && haramView.getVisibility() == View.VISIBLE
                 && settingsScreen == null && haramView.handleKey(event)) return true;
+        if (activeTab == TAB_GALLERY && galleryView != null && galleryView.getVisibility() == View.VISIBLE
+                && settingsScreen == null && galleryView.handleKey(event)) return true;
         // The Quran player handles its own remote keys, so the launcher's page navigation never steals them.
         if (activeTab == TAB_QURAN && quranView != null && quranView.getVisibility() == View.VISIBLE
                 && settingsScreen == null) {
@@ -1643,11 +1654,12 @@ public final class MainActivity extends Activity {
         } finally {
             switchingTabs = false;
         }
-        boolean fullScreen = selectedTab == TAB_QURAN || selectedTab == TAB_HARAM;
+        boolean fullScreen = selectedTab == TAB_QURAN || selectedTab == TAB_HARAM || selectedTab == TAB_GALLERY;
         if (launcherShell != null) launcherShell.setDescendantFocusability(fullScreen
                 ? ViewGroup.FOCUS_BLOCK_DESCENDANTS : ViewGroup.FOCUS_AFTER_DESCENDANTS);
         if (selectedTab == TAB_QURAN && quranView != null) quranView.post(() -> quranView.entryFocus().requestFocus());
         if (selectedTab == TAB_HARAM && haramView != null) haramView.post(() -> haramView.entryFocus().requestFocus());
+        if (selectedTab == TAB_GALLERY && galleryView != null) galleryView.post(() -> galleryView.entryFocus().requestFocus());
         // On the prayer page the whole screen, bar included, takes the page's own calm colour.
         browsingShade.setBackgroundColor(selectedTab == TAB_PRAYER ? PrayerView.BACKGROUND
                 : (LiquidTheme.isLight(this) ? 0xFFE9F1EE : 0xFF071417));
@@ -3207,6 +3219,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             if (!quranTileAdded && packageName.startsWith("com.google.android.youtube")) {
                 appRow.addView(quranTile(tileWidth), 0, quranTileParams());
                 appRow.addView(haramTile(tileWidth), 0, quranTileParams());
+                appRow.addView(galleryTile(tileWidth), 0, quranTileParams());
                 quranTileAdded = true;
             }
             if (displayed == 0) {
@@ -3220,6 +3233,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         if (!quranTileAdded) {
             appRow.addView(quranTile(tileWidth), appRow.getChildCount(), quranTileParams());
             appRow.addView(haramTile(tileWidth), 0, quranTileParams());
+            appRow.addView(galleryTile(tileWidth), 0, quranTileParams());
         }
         if (displayed > 0) {
             tabButtons[TAB_HOME].setNextFocusUpId(appRow.getChildAt(appRow.getChildCount() - 1).getId());
@@ -3762,6 +3776,41 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
 
     private View quranTile(int tileWidth) {
         return builtInTile("القرآن الكريم", new QuranView.MushafIcon(), 0x2F3E36, TAB_QURAN);
+    }
+
+    private View galleryTile(int tileWidth) {
+        return builtInTile("الخلفيات", new FrameIcon(), 0x2A2620, TAB_GALLERY);
+    }
+
+    /** A small gilded picture frame, matching the other built-in icons. */
+    static final class FrameIcon extends Drawable {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        @Override public void draw(Canvas canvas) {
+            Rect b = getBounds();
+            float size = Math.min(b.width(), b.height()), cx = b.exactCenterX(), cy = b.exactCenterY();
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(0x26E3B469);
+            canvas.drawCircle(cx, cy, size / 2f, paint);
+            RectF outer = new RectF(cx - size * 0.25f, cy - size * 0.2f, cx + size * 0.25f, cy + size * 0.2f);
+            paint.setColor(0xFFE3B469);
+            canvas.drawRect(outer, paint);
+            RectF inner = new RectF(outer);
+            inner.inset(size * 0.06f, size * 0.06f);
+            paint.setColor(0xFF2F3E36);
+            canvas.drawRect(inner, paint);
+            // A hill and a sun inside the frame.
+            paint.setColor(0xFFE3B469);
+            canvas.drawCircle(inner.right - inner.width() * 0.28f, inner.top + inner.height() * 0.32f, size * 0.035f, paint);
+            android.graphics.Path hill = new android.graphics.Path();
+            hill.moveTo(inner.left, inner.bottom);
+            hill.lineTo(inner.left + inner.width() * 0.4f, inner.top + inner.height() * 0.45f);
+            hill.lineTo(inner.right, inner.bottom);
+            hill.close();
+            canvas.drawPath(hill, paint);
+        }
+        @Override public void setAlpha(int alpha) { }
+        @Override public void setColorFilter(android.graphics.ColorFilter filter) { }
+        @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
     }
 
     private View haramTile(int tileWidth) {
