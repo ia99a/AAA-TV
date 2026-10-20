@@ -18,6 +18,8 @@ SECRET = re.compile(r'-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----|gh[pousr]_[A-Za-z
 URL = re.compile(r'https?://[^\s<>\"\x27]+')
 PRIVATE_NAMES = {'.env', 'local.properties'}
 PRIVATE_SUFFIXES = {'.jks', '.keystore', '.p12', '.pem', '.apk', '.aab'}
+# The sideload signing key for TV builds is published on purpose (see app/build.gradle).
+ALLOWED_KEYS = {'app/aaa-tv.p12'}
 
 def git(*args):
     return subprocess.check_output(['git', *args], cwd=ROOT)
@@ -61,7 +63,7 @@ def main():
     names = git('ls-files', '--cached', '--others', '--exclude-standard', '-z').decode().split('\0')
     for name in filter(None, names):
         path = ROOT / name
-        if pathlib.Path(name).name in PRIVATE_NAMES or path.suffix.lower() in PRIVATE_SUFFIXES:
+        if (pathlib.Path(name).name in PRIVATE_NAMES or path.suffix.lower() in PRIVATE_SUFFIXES) and name not in ALLOWED_KEYS:
             problems.append(f'{name}: private/local artifact must not be published')
         if path.is_file() and path.stat().st_size < 2_000_000:
             problems.extend(inspect(name, path.read_bytes(), name))
@@ -72,7 +74,7 @@ def main():
             if len(fields) != 2:
                 continue
             oid, name = fields
-            if pathlib.Path(name).name in PRIVATE_NAMES or pathlib.Path(name).suffix.lower() in PRIVATE_SUFFIXES:
+            if (pathlib.Path(name).name in PRIVATE_NAMES or pathlib.Path(name).suffix.lower() in PRIVATE_SUFFIXES) and name not in ALLOWED_KEYS:
                 problems.append(f'history {oid[:12]} {name}: private/local artifact')
             if name.startswith('third_party/') or pathlib.Path(name).suffix.lower() not in TEXT:
                 continue

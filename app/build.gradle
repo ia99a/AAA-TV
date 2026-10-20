@@ -20,8 +20,9 @@ android {
         minSdk 26
         targetSdk 36
 
-        versionCode 8
-        versionName "4.1.3"
+        // Every CI build gets a higher version, so the TV always accepts it as an update.
+        versionCode 100 + (System.getenv("GITHUB_RUN_NUMBER") ?: "0").toInteger()
+        versionName "4.2." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
         testInstrumentationRunner "android.test.InstrumentationTestRunner"
 
         // The built-in NES emulator is not used in this TV build, so its native code is left out:
@@ -46,7 +47,22 @@ android {
         }
     }
 
+    // One fixed key for the TV builds. Without it each CI runner made a new debug key, and the TV
+    // refused to install an update over the previous build ("App not installed").
+    signingConfigs {
+        tv {
+            storeFile file("aaa-tv.p12")
+            storeType "pkcs12"
+            storePassword "aaatv-sideload"
+            keyAlias "aaatv"
+            keyPassword "aaatv-sideload"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig signingConfigs.tv
+        }
         release {
             if (hasReleaseSigning) signingConfig signingConfigs.release
             minifyEnabled true

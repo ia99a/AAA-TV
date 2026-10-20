@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
-/** Fires at each adhan and iqama (private to Sva), shows the alert, and sets the next one. */
+/** Fires at each adhan and iqama (private to AAA TV), shows the alert, and sets the next one. */
 public final class PrayerAlertReceiver extends BroadcastReceiver {
     /** Re-arms the next alert after a reboot, an app update, or a clock or time-zone change. */
     public static final class Rearm extends BroadcastReceiver {
@@ -27,7 +27,8 @@ public final class PrayerAlertReceiver extends BroadcastReceiver {
         if (!PrayerAlerts.enabled(app)) return;
         // Skip alerts that arrive long after their time, for example after the TV was off.
         if (Math.abs(System.currentTimeMillis() - at) > 5 * 60_000L) return;
-        PendingResult result = goAsync();
-        PrayerAlertToast.show(app, prayer, iqama, result::finish);
+        // The card and chime run on the main thread after this returns; the broadcast itself ends now,
+        // well inside the system's time limit for receivers.
+        PrayerAlertToast.show(app, prayer, iqama, () -> { });
     }
 }

@@ -63,7 +63,10 @@ final class GalleryView extends FrameLayout {
 
     private final SharedPreferences preferences;
     private final Handler handler = new Handler(Looper.getMainLooper());
+    /** Decodes saved pictures; kept separate from downloads so pictures show while new ones arrive. */
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
+    private static final ExecutorService DOWNLOADS = Executors.newSingleThreadExecutor();
+    private static final java.util.Set<String> DOWNLOADING = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
     private final Slide[] slides = new Slide[2];
     private final TextView label, status;
     private int front, collection, index, dhikr;
@@ -160,13 +163,25 @@ final class GalleryView extends FrameLayout {
             status.setText("");
             show(index);
         }
-        if (GalleryRepository.needsDownload(getContext(), key)) {
-            worker.execute(() -> GalleryRepository.download(getContext(), key, file -> handler.post(() -> {
-                if (!key.equals(GalleryRepository.KEYS[collection])) return;
-                boolean wasEmpty = files.isEmpty();
-                files = GalleryRepository.cached(getContext(), key);
-                if (wasEmpty && running) { status.setText(""); show(0); }
-            })));
+        final Context app = getContext().getApplicationContext();
+        if (GalleryRepository.needsDownload(app, key) && DOWNLOADING.add(key)) {
+            DOWNLOADS.execute(() -> {
+                try {
+                    GalleryRepository.download(app, key, file -> handler.post(() -> {
+                        if (!key.equals(GalleryRepository.KEYS[collection])) return;
+                        boolean wasEmpty = files.isEmpty();
+                        files = GalleryRepository.cached(app, key);
+                        if (wasEmpty && running) { status.setText(""); show(0); }
+                    }));
+                } finally {
+                    DOWNLOADING.remove(key);
+                    handler.post(() -> {
+                        // Nothing could be saved (no internet): say so instead of waiting forever.
+                        if (key.equals(GalleryRepository.KEYS[collection]) && files.isEmpty())
+                            status.setText("تعذّر التنزيل. تأكد من اتصال الإنترنت ثم افتح «الخلفيات» مرة أخرى.");
+                    });
+                }
+            });
         }
     }
 
@@ -216,6 +231,11 @@ final class GalleryView extends FrameLayout {
         private final TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         private final Matrix matrix = new Matrix();
         private final RectF rect = new RectF();
+        private StaticLayout layout;
+        private float layoutSize;
+        private int layoutWidth, wallHeight;
+        private LinearGradient wall;
+        private RadialGradient glow;
 
         Slide(Context context) {
             super(context);
@@ -228,6 +248,7 @@ final class GalleryView extends FrameLayout {
             bitmap = value;
             framed = isFramed;
             text = dhikrText;
+            layout = null;
             drift = 0f;
             driftAnimator = ValueAnimator.ofFloat(0f, 1f);
             driftAnimator.setDuration(SLIDE_MS + 3000);
@@ -258,9 +279,14 @@ final class GalleryView extends FrameLayout {
                 return;
             }
             // Wall: deep green with a soft light from above.
-            paint.setShader(new LinearGradient(0, 0, 0, h, 0xFF26352C, 0xFF151D18, Shader.TileMode.CLAMP));
+            if (wall == null || wallHeight != (int) h) {
+                wallHeight = (int) h;
+                wall = new LinearGradient(0, 0, 0, h, 0xFF26352C, 0xFF151D18, Shader.TileMode.CLAMP);
+                glow = new RadialGradient(w / 2f, h * 0.05f, h * 0.9f, 0x22F3E3C0, 0x00000000, Shader.TileMode.CLAMP);
+            }
+            paint.setShader(wall);
             canvas.drawRect(0, 0, w, h, paint);
-            paint.setShader(new RadialGradient(w / 2f, h * 0.05f, h * 0.9f, 0x22F3E3C0, 0x00000000, Shader.TileMode.CLAMP));
+            paint.setShader(glow);
             canvas.drawRect(0, 0, w, h, paint);
             paint.setShader(null);
             // Painting size: fit within the wall, leaving room for the frame and plaque.
@@ -300,10 +326,13 @@ final class GalleryView extends FrameLayout {
                     new int[]{0xFFC9A55E, 0xFFEFD9A0, 0xFFB58E45}, null, Shader.TileMode.CLAMP));
             canvas.drawRoundRect(rect, plaqueH * 0.12f, plaqueH * 0.12f, paint);
             paint.setShader(null);
-            textPaint.setTextSize(plaqueH * 0.34f);
-            int layoutWidth = (int) (plaqueW * 0.9f);
-            StaticLayout layout = StaticLayout.Builder.obtain(text, 0, text.length(), textPaint, layoutWidth)
-                    .setAlignment(Layout.Alignment.ALIGN_CENTER).setMaxLines(2).build();
+            if (layout == null || layoutSize != plaqueH * 0.34f || layoutWidth != (int) (plaqueW * 0.9f)) {
+                layoutSize = plaqueH * 0.34f;
+                layoutWidth = (int) (plaqueW * 0.9f);
+                textPaint.setTextSize(layoutSize);
+                layout = StaticLayout.Builder.obtain(text, 0, text.length(), textPaint, layoutWidth)
+                        .setAlignment(Layout.Alignment.ALIGN_CENTER).setMaxLines(2).build();
+            }
             canvas.save();
             canvas.translate((w - layoutWidth) / 2f, rect.centerY() - layout.getHeight() / 2f);
             layout.draw(canvas);

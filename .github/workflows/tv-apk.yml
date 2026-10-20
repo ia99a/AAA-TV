@@ -28,7 +28,7 @@ jobs:
       - name: Build debug APK
         run: |
           set -o pipefail
-          if ! ./gradlew --no-daemon assembleDebug 2>&1 | tee build.log; then
+          if ! ./gradlew --no-daemon assembleDebug testDebugUnitTest 2>&1 | tee build.log; then
             # Surface the first compiler and Gradle errors as annotations, readable without the raw log.
             grep -E "error:|\.java:[0-9]+: |What went wrong|^> |FAILURE|Exception" build.log \
               | grep -v "^> Task" | head -40 | while IFS= read -r line; do

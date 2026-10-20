@@ -21,3 +21,4 @@ secrets
 *.aab
 *.apks
 *.log
+!app/aaa-tv.p12
