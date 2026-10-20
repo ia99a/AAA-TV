@@ -359,8 +359,47 @@ public final class MainActivity extends Activity {
     private void handleBack() {
         if (settingsScreen != null) { settingsScreen.requestClose(); return; }
         if (activeTab == TAB_QURAN && quranView != null && quranView.handleBack()) return;
+        if (activeTab == TAB_HOME && preferences.getBoolean(LauncherOverrideService.KIOSK, true)) {
+            countKioskBack();
+            return;
+        }
         if (activeTab != TAB_HOME) { selectTab(TAB_HOME, true); return; }
         super.onBackPressed();
+    }
+
+    private int kioskBackPresses;
+    private long kioskBackAt;
+
+    /** "Always on screen": Back on «آمر» does nothing, unless pressed three times in a row to leave. */
+    private void countKioskBack() {
+        long now = android.os.SystemClock.uptimeMillis();
+        kioskBackPresses = now - kioskBackAt < 1600 ? kioskBackPresses + 1 : 1;
+        kioskBackAt = now;
+        if (kioskBackPresses < 3) {
+            android.widget.Toast.makeText(this, kioskBackPresses == 1 ? "اضغط رجوع مرتين أخريين للخروج"
+                    : "اضغط رجوع مرة أخرى للخروج", android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+        kioskBackPresses = 0;
+        preferences.edit().putBoolean(LauncherOverrideService.KIOSK, false).apply();
+        android.widget.Toast.makeText(this, "أوقفت الشاشة الدائمة. لإعادتها: زر القائمة ← المشغّل دائم على الشاشة",
+                android.widget.Toast.LENGTH_LONG).show();
+        openStockHome();
+    }
+
+    /** Opens the TV's own home screen. */
+    private void openStockHome() {
+        for (String pkg : new String[]{"com.google.android.apps.tv.launcherx", "com.google.android.tvlauncher",
+                "com.google.android.leanbacklauncher"}) {
+            try {
+                startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setPackage(pkg)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                return;
+            } catch (Exception ignored) { }
+        }
+        try { startActivity(new Intent(android.provider.Settings.ACTION_HOME_SETTINGS)); return; }
+        catch (Exception ignored) { }
+        moveTaskToBack(true);
     }
 
     private void acceptReminderIntent(Intent intent) {
@@ -890,6 +929,15 @@ public final class MainActivity extends Activity {
                 List<String> selected = selectedPackages(all);
                 if (selected.isEmpty() && !preferences.getBoolean("customApps", false)) selected = defaultApps(all);
                 return selected;
+            }
+            @Override public void onKioskChanged(boolean enabled) {
+                if (enabled && !isLauncherOverrideEnabled()) {
+                    // The helper needs Accessibility permission once to bring AAA TV back over the TV's own home.
+                    android.widget.Toast.makeText(MainActivity.this,
+                            "فعّل «AAA TV» في إمكانية الوصول، ثم ارجع", android.widget.Toast.LENGTH_LONG).show();
+                    try { startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)); }
+                    catch (Exception ignored) { }
+                }
             }
             @Override public void onHomeAppsChanged(List<String> packages) {
                 preferences.edit().putString("selectedApps", String.join("\n", packages))

@@ -13,12 +13,15 @@ public final class LauncherOverrideService extends AccessibilityService {
             "com.google.android.leanbacklauncher",
             "com.google.android.leanbacklauncher.recommendations"
     };
+    static final String KIOSK = "kioskMode";
     private long lastReopenAt;
 
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
         if (event == null || event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
         CharSequence packageName = event.getPackageName();
         if (packageName == null || !isStockLauncher(packageName.toString())) return;
+        // "Always on screen" switched off (Back three times, or quick settings): let the TV's own home show.
+        if (!getSharedPreferences("launcher", MODE_PRIVATE).getBoolean(KIOSK, true)) return;
 
         long now = android.os.SystemClock.uptimeMillis();
         if (now - lastReopenAt < REOPEN_THROTTLE_MS) return;

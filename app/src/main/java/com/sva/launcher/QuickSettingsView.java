@@ -30,11 +30,12 @@ final class QuickSettingsView extends FrameLayout {
         /** Packages shown on Home, in order. */
         List<String> homeApps();
         void onHomeAppsChanged(List<String> packages);
+        void onKioskChanged(boolean enabled);
     }
 
     static final String PREF_WEATHER_CITY = "weatherCityKey";
     private static final int INK = 0xFFF1ECE2, SOFT = 0x99F1ECE2, GOLD = 0xFFE3B469;
-    private static final int MOOD = 0, COLOUR = 1, WEATHER = 2, APPS = 3, ADVANCED = 4;
+    private static final int MOOD = 0, COLOUR = 1, WEATHER = 2, APPS = 3, KIOSK = 4, ADVANCED = 5;
 
     private final SharedPreferences preferences;
     private final Listener listener;
@@ -169,6 +170,10 @@ final class QuickSettingsView extends FrameLayout {
             PrayerTimes.City next = PrayerTimes.CITIES[Math.floorMod(index + delta, PrayerTimes.CITIES.length)];
             preferences.edit().putString(PREF_WEATHER_CITY, next.key).apply();
             listener.onWeatherCityChanged(next);
+        } else if (selected == KIOSK) {
+            boolean enabled = !preferences.getBoolean(LauncherOverrideService.KIOSK, true);
+            preferences.edit().putBoolean(LauncherOverrideService.KIOSK, enabled).apply();
+            listener.onKioskChanged(enabled);
         }
         refreshMain();
     }
@@ -182,6 +187,8 @@ final class QuickSettingsView extends FrameLayout {
         rows.get(COLOUR).setVisibility(calm() ? VISIBLE : GONE);
         rows.get(WEATHER).setText("‹  مدينة الطقس: " + PrayerTimes.city(preferences.getString(PREF_WEATHER_CITY, "riyadh")).name + "  ›");
         rows.get(APPS).setText("تطبيقات الشاشة الرئيسية وترتيبها");
+        rows.get(KIOSK).setText("‹  المشغّل دائم على الشاشة: "
+                + (preferences.getBoolean(LauncherOverrideService.KIOSK, true) ? "يعمل" : "متوقف") + "  ›");
         rows.get(ADVANCED).setText("الإعدادات المتقدمة");
         if (selected == COLOUR && !calm()) selected = MOOD;
         paint();
