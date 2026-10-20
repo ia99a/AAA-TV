@@ -18,7 +18,7 @@ import java.util.Map;
  * moon sighting, so the real day can differ by one.
  */
 final class SaudiCalendar {
-    static final int ISLAMIC = 0, WHITE_DAYS = 1, NATIONAL = 2, SCHOOL = 3;
+    static final int ISLAMIC = 0, WHITE_DAYS = 1, NATIONAL = 2, SCHOOL = 3, PERSONAL = 4;
 
     static final class Item {
         final String title;
@@ -43,6 +43,8 @@ final class SaudiCalendar {
     static final String FOUNDING_DAY = "يوم التأسيس";
     static final String FLAG_DAY = "يوم العلم";
     static final String NATIONAL_DAY = "اليوم الوطني";
+    /** Personal yearly occasion, shown in dark pink. */
+    static final String HIBAT_ALKAREEM = "هبة الكريم";
 
     private static final String[] HIJRI_MONTHS = {"محرم", "صفر", "ربيع الأول", "ربيع الآخر", "جمادى الأولى",
             "جمادى الآخرة", "رجب", "شعبان", "رمضان", "شوال", "ذو القعدة", "ذو الحجة"};
@@ -67,6 +69,7 @@ final class SaudiCalendar {
         KINDS.put(WHITE, WHITE_DAYS);
         for (String title : new String[]{FOUNDING_DAY, FLAG_DAY, NATIONAL_DAY}) KINDS.put(title, NATIONAL);
         for (Item item : SCHOOL_1448) KINDS.put(item.title, SCHOOL);
+        KINDS.put(HIBAT_ALKAREEM, PERSONAL);
     }
 
     private SaudiCalendar() { }
@@ -113,6 +116,8 @@ final class SaudiCalendar {
             addFixed(items, FOUNDING_DAY, MonthDay.of(2, 22), year);
             addFixed(items, FLAG_DAY, MonthDay.of(3, 11), year);
             addFixed(items, NATIONAL_DAY, MonthDay.of(9, 23), year);
+            LocalDate gift = MonthDay.of(5, 20).atYear(year);
+            items.add(new Item(HIBAT_ALKAREEM, gift, gift, PERSONAL));
         }
         for (Item item : SCHOOL_1448) items.add(item);
         ArrayList<Item> inRange = new ArrayList<>();

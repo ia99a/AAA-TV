@@ -1880,6 +1880,7 @@ public final class MainActivity extends Activity {
             case SaudiCalendar.WHITE_DAYS: return 0x88707C8A;
             case SaudiCalendar.NATIONAL: return 0xAA0F5A35;
             case SaudiCalendar.SCHOOL: return 0xAA7A5A1C;
+            case SaudiCalendar.PERSONAL: return 0xDD8E1F4E;
             default: break;
         }
         String name = title.toLowerCase(Locale.ROOT);
@@ -1896,6 +1897,7 @@ public final class MainActivity extends Activity {
             case SaudiCalendar.WHITE_DAYS: return 0xFFF2F2EC;
             case SaudiCalendar.NATIONAL: return 0xFF3CCB7F;
             case SaudiCalendar.SCHOOL: return 0xFFFFC857;
+            case SaudiCalendar.PERSONAL: return 0xFFC2185B;
             default: break;
         }
         String name = title.toLowerCase(Locale.ROOT);
