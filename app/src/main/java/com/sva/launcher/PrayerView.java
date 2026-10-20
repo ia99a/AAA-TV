@@ -24,7 +24,7 @@ import java.util.Random;
 
 /**
  * A calm, Arabic, right-to-left prayer screen: clock and dates, the next prayer with a countdown
- * and its iqama, a verse for the day, and all of today's times. It dims itself late at night and
+ * and its iqama, a verse for the day, and all of today's times. It
  * nudges its content a few pixels every ten minutes to protect the panel from burn-in.
  */
 final class PrayerView extends FrameLayout {
@@ -347,13 +347,11 @@ final class PrayerView extends FrameLayout {
             columnIqama[i].setTextColor(isNext ? LAMP : INK_FAINT);
         }
 
-        // Quiet hours: from an hour after Isha until half an hour before Fajr.
-        LocalDateTime nightStart = today[PrayerTimes.ISHA].plusHours(1);
-        LocalDateTime nightEnd = today[PrayerTimes.FAJR].minusMinutes(30);
-        boolean night = !now.isBefore(nightStart) || now.isBefore(nightEnd);
-        if (dimmed == null || dimmed != night) {
-            dimmed = night;
-            content.animate().alpha(night ? .45f : 1f).setDuration(2000).start();
+        // Always full brightness.
+        if (dimmed == null || dimmed) {
+            dimmed = false;
+            content.animate().cancel();
+            content.setAlpha(1f);
         }
 
         // Burn-in protection: shift a few pixels every ten minutes.
