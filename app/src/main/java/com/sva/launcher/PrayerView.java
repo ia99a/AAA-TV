@@ -30,7 +30,8 @@ import java.util.Random;
 final class PrayerView extends FrameLayout {
     static final String PREF_CITY = "prayerCity";
 
-    private static final int BG = 0xFF11161D;
+    static final int BACKGROUND = 0xFF11161D;
+    private static final int BG = BACKGROUND;
     private static final int INK = 0xFFECE4D4;
     private static final int INK_SOFT = 0xFFA7A294;
     private static final int INK_FAINT = 0xFF6A717B;

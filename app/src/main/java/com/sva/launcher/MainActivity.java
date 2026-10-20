@@ -678,8 +678,8 @@ public final class MainActivity extends Activity {
                 / getResources().getDisplayMetrics().density);
         compactNavigation = screenWidthDp < 800;
         int outerPadding = compactNavigation ? 16 : 33;
-        int dockHeight = 64;
-        navigation.setPadding(dp(outerPadding), dp(10), dp(outerPadding), dp(12));
+        int dockHeight = 50;
+        navigation.setPadding(dp(outerPadding), dp(8), dp(outerPadding), dp(8));
         tabShell.addView(navigation, new LinearLayout.LayoutParams(-1, dp(dockHeight)));
 
         navigation.setClipChildren(false);
@@ -689,10 +689,10 @@ public final class MainActivity extends Activity {
         navbar.setClipChildren(false);
         navbar.setClipToPadding(false);
         navbar.setPadding(dp(10), 0, dp(14), 0);
-        navbar.setBackground(roundedShape(light ? 0xE9F9FCF8 : 0xD508181A,
-                light ? 0x887C9E9A : 0x55C4D9D2, 1, 24));
-        navbar.setElevation(dp(6));
-        navigation.addView(navbar, new LinearLayout.LayoutParams(-2, dp(42)));
+        // A transparent bar: only the labels and the gold underline, no panel behind them.
+        navbar.setBackground(null);
+        navbar.setElevation(0);
+        navigation.addView(navbar, new LinearLayout.LayoutParams(-2, dp(34)));
 
         int weatherMaxWidth = compactNavigation ? 165 : 195;
         HorizontalScrollView tabScroller = new HorizontalScrollView(this);
@@ -701,7 +701,7 @@ public final class MainActivity extends Activity {
         tabScroller.setFillViewport(false);
         tabScroller.setClipChildren(true);
         tabScroller.setClipToPadding(false);
-        LinearLayout.LayoutParams tabGroupParams = new LinearLayout.LayoutParams(-2, dp(40));
+        LinearLayout.LayoutParams tabGroupParams = new LinearLayout.LayoutParams(-2, dp(34));
         navbar.addView(tabScroller, tabGroupParams);
         tabRow = new LinearLayout(this);
         tabRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -715,12 +715,12 @@ public final class MainActivity extends Activity {
             button.setId(View.generateViewId());
             button.setMinWidth(0);
             button.setMinimumWidth(0);
-            button.setTextSize(13);
+            button.setTextSize(12);
             int horizontalButtonPadding = compactNavigation ? 12 : (i == TAB_HOME ? 18 : 10);
             button.setPadding(dp(horizontalButtonPadding), 0, dp(horizontalButtonPadding), 0);
             NavigationGlyph glyph = new NavigationGlyph(i);
             navigationGlyphs[i] = glyph;
-            glyph.setBounds(0, 0, dp(18), dp(18));
+            glyph.setBounds(0, 0, dp(16), dp(16));
             // Right-to-left: the icon sits to the right of the Arabic label.
             button.setCompoundDrawablesRelative(null, null, glyph, null);
             button.setCompoundDrawablePadding(dp(6));
@@ -830,8 +830,10 @@ public final class MainActivity extends Activity {
         addTopIcon(systemShortcuts, "Network", R.drawable.ic_network, this::openNetworkSettings);
         addTopIcon(systemShortcuts, "Android Settings", R.drawable.ic_android_settings, this::openAndroidSettings);
         addTopIcon(systemShortcuts, "Launcher Settings", R.drawable.ic_launcher_settings, this::showSettings);
-        // Right-to-left bar: system shortcuts on the left, tabs on the right.
-        mirrorRow(systemShortcuts);
+        // The network, Android settings and launcher settings icons are hidden to keep the bar quiet.
+        // Launcher settings open with the remote's Menu key, or a long press on «آمر».
+        systemShortcuts.setVisibility(View.GONE);
+        tabButtons[TAB_HOME].setOnLongClickListener(v -> { showSettings(); return true; });
         mirrorRow(navbar);
         FrameLayout viewport = new FrameLayout(this);
         viewport.setClipChildren(false);
@@ -1250,6 +1252,11 @@ public final class MainActivity extends Activity {
                 event.startTracking();
             }
         }
+        if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0 && settingsScreen == null
+                && (event.getKeyCode() == KeyEvent.KEYCODE_MENU || event.getKeyCode() == KeyEvent.KEYCODE_SETTINGS)) {
+            showSettings();
+            return true;
+        }
         if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
             if (event.getKeyCode() == KeyEvent.KEYCODE_STAR || event.getKeyCode() == KeyEvent.KEYCODE_BOOKMARK
                     || event.getKeyCode() == KeyEvent.KEYCODE_PROG_YELLOW || event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_Y) {
@@ -1542,7 +1549,11 @@ public final class MainActivity extends Activity {
         if (launcherShell != null) launcherShell.setDescendantFocusability(selectedTab == TAB_QURAN
                 ? ViewGroup.FOCUS_BLOCK_DESCENDANTS : ViewGroup.FOCUS_AFTER_DESCENDANTS);
         if (selectedTab == TAB_QURAN && quranView != null) quranView.post(() -> quranView.entryFocus().requestFocus());
-        browsingShade.setAlpha(selectedTab == TAB_HOME ? (LiquidTheme.isLight(this) ? .50f : 0f)
+        // On the prayer page the whole screen, bar included, takes the page's own calm colour.
+        browsingShade.setBackgroundColor(selectedTab == TAB_PRAYER ? PrayerView.BACKGROUND
+                : (LiquidTheme.isLight(this) ? 0xFFE9F1EE : 0xFF071417));
+        browsingShade.setAlpha(selectedTab == TAB_PRAYER ? 1f
+                : selectedTab == TAB_HOME ? (LiquidTheme.isLight(this) ? .50f : 0f)
                 : (LiquidTheme.isLight(this) ? .88f : .65f));
         View selectedPage = tabPages[selectedTab];
         if (selectedPage != null) {
@@ -1592,7 +1603,7 @@ public final class MainActivity extends Activity {
         for (int tab : navigationOrder()) if (!isNavigationHidden(tab)) visible.add(tab);
         // Right-to-left: the first tab sits at the right end of the bar.
         for (int i = visible.size() - 1; i >= 0; i--)
-            tabRow.addView(tabButtons[visible.get(i)], new LinearLayout.LayoutParams(-2, dp(36)));
+            tabRow.addView(tabButtons[visible.get(i)], new LinearLayout.LayoutParams(-2, dp(32)));
     }
 
     private void openYouTubeSettings() {
@@ -2235,21 +2246,26 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         Paint.FontMetrics dateFm = datePaint.getFontMetrics();
         float row1Baseline = getPaddingTop() - dateFm.ascent;
         datePaint.setTextAlign(Paint.Align.RIGHT);
-        canvas.drawText(String.valueOf(dayNumber), right, row1Baseline, datePaint);
+        if (today) {
+            // Today: the date sits in a gold disc, in the same gold as the bar's underline.
+            float textWidth = datePaint.measureText(String.valueOf(dayNumber));
+            float cx = right - textWidth / 2f, cy = row1Baseline + (dateFm.ascent + dateFm.descent) / 2f;
+            float radius = Math.max(textWidth, -dateFm.ascent) / 2f + dp(6);
+            todayPaint.setColor(0xFFE3B469);
+            canvas.drawCircle(cx, cy, radius, todayPaint);
+            datePaint.setColor(0xFF1B2024);
+        }
+        canvas.drawText(String.valueOf(dayNumber), right - (today ? dp(2) : 0), row1Baseline, datePaint);
+        datePaint.setColor(primary);
         datePaint.setTextAlign(Paint.Align.LEFT);
 
         if (!hijriLabel.isEmpty()) {
             hijriPaint.setTextSize(sp(11));
             hijriPaint.setColor(secondary);
             hijriPaint.setTextAlign(Paint.Align.LEFT);
-            canvas.drawText(hijriLabel, left + dp(today ? 10 : 2), row1Baseline, hijriPaint);
+            canvas.drawText(hijriLabel, left + dp(2), row1Baseline, hijriPaint);
         }
 
-        if (today) {
-            todayPaint.setColor(LiquidTheme.isLight(MainActivity.this) ? 0xFFD32F2F : 0xFFFFE0E0);
-            float radius = dp(3);
-            canvas.drawCircle(left + radius, getPaddingTop() + radius, radius, todayPaint);
-        }
 
         float barHeight = dp(4);
         float chipLimit = getHeight() - getPaddingBottom() - dp(2) - bars.size() * (barHeight + dp(2));
@@ -5985,9 +6001,9 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         lifecycleWork.execute(ioWorker, () -> {
             android.graphics.Bitmap decoded = uriValue == null ? null : decodeWallpaper(Uri.parse(uriValue), targetWidth, targetHeight);
             if (decoded == null) {
-                BitmapFactory.Options options = new BitmapFactory.Options();
-                options.inSampleSize = 2;
-                decoded = BitmapFactory.decodeResource(getResources(), R.drawable.mountain_wallpaper, options);
+                // No photo chosen: one of the calm built-in backgrounds.
+                decoded = CalmWallpapers.render(preferences.getInt(CalmWallpapers.PREF, CalmWallpapers.DEFAULT),
+                        Math.max(640, targetWidth), Math.max(360, targetHeight));
             }
             final android.graphics.Bitmap bitmap = decoded;
             lifecycleWork.post(() -> {
