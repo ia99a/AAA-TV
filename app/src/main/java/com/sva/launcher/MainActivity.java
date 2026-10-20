@@ -3164,20 +3164,14 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             tile.setFocusable(true);
             tile.setClickable(true);
             StateListDrawable appTileStates = new Motion.States();
-            String brand = (entry.packageName + " " + entry.label).toLowerCase(Locale.ROOT);
-            boolean isBranded = brand.contains("netflix") || brand.contains("prime") || brand.contains("disney")
-                    || brand.contains("youtube") || brand.contains("apple");
-            int cardColor = brand.contains("netflix") ? 0xED071316
-                    : brand.contains("prime") ? 0xF00678B9
-                    : brand.contains("disney") ? 0xF00D1A55
-                    : brand.contains("youtube") ? 0xF4FAFAFA
-                    : brand.contains("apple") ? 0xF4FAFAFA
-                    : (light ? LiquidTheme.surface(this) : 0xCE102328);
-            boolean whiteCard = brand.contains("youtube") || brand.contains("apple");
-            int focusColor = isBranded ? cardColor : (light ? LiquidTheme.raisedSurface(this) : cardColor);
-            int unfocusedBg = isBranded ? cardColor : (light ? LiquidTheme.surface(this) : 0xB5101C20);
-            int unfocusedBorder = light ? LiquidTheme.border(this) : 0x66FFFFFF;
-            int focusedBorder = LiquidTheme.accent(this);
+            // Calm, dark tiles for every app, with a round icon like the built-in tiles.
+            boolean isYouTube = entry.packageName.startsWith("com.google.android.youtube");
+            boolean isStremio = entry.packageName.equals("com.stremio.one");
+            int rgb = isYouTube ? 0x2E2626 : isStremio ? 0x29263A : 0x262B30;
+            int focusColor = 0xF2000000 | rgb;
+            int unfocusedBg = 0xE0000000 | rgb;
+            int unfocusedBorder = 0x66FFFFFF;
+            int focusedBorder = GOLD_FOCUS;
             appTileStates.addState(new int[]{android.R.attr.state_focused},
                     roundedShape(focusColor, focusedBorder, 2, 16));
             appTileStates.addState(new int[]{android.R.attr.state_pressed},
@@ -3191,16 +3185,11 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             Motion.interaction(tile, false);
             tile.setPadding(dp(8), dp(4), dp(10), dp(4));
             tile.setTag(packageName);
-            ImageView icon = new ImageView(this);
-            icon.setImageDrawable(entry.icon);
-            icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            LinearLayout.LayoutParams appIconParams = new LinearLayout.LayoutParams(dp(36), dp(36));
-            int nameColor;
-            if (isBranded) {
-                nameColor = whiteCard ? 0xFF101820 : Color.WHITE;
-            } else {
-                nameColor = light ? LiquidTheme.text(this) : Color.WHITE;
-            }
+            View icon = new View(this);
+            icon.setBackground(isYouTube ? new AppGlyph(AppGlyph.YOUTUBE) : isStremio ? new AppGlyph(AppGlyph.STREMIO)
+                    : new RoundAppIcon(entry.icon));
+            LinearLayout.LayoutParams appIconParams = new LinearLayout.LayoutParams(dp(38), dp(38));
+            int nameColor = 0xFFF1ECE2;
             TextView name = label(entry.label, compactNavigation ? 12 : 13, nameColor, true);
             name.setTextColor(nameColor);
             name.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
@@ -3208,7 +3197,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             name.setEllipsize(android.text.TextUtils.TruncateAt.END);
             // Right to left: the name, then the icon at the right edge.
             tile.addView(name, new LinearLayout.LayoutParams(0, -1, 1));
-            appIconParams.leftMargin = dp(8);
+            appIconParams.leftMargin = dp(10);
             tile.addView(icon, appIconParams);
             tile.setOnClickListener(v -> launchApp(entry.packageName));
             if (nowPlayingSection != null && nowPlayingSection.getVisibility() == View.VISIBLE && musicToggle != null) {
@@ -3898,6 +3887,80 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
     }
 
+    /** Focus outline for the home tiles: the same gold as the icons. */
+    private static final int GOLD_FOCUS = 0xFFE3B469;
+
+    /**
+     * Round, calm icons drawn on the device for YouTube and Stremio: a softened version of each app's
+     * colour with a cream symbol, in the same circle as the Quran and Haram tiles.
+     */
+    static final class AppGlyph extends Drawable {
+        static final int YOUTUBE = 0, STREMIO = 1;
+        private final int kind;
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Path path = new android.graphics.Path();
+        private final RectF rect = new RectF();
+        AppGlyph(int kind) { this.kind = kind; }
+        @Override public void draw(Canvas canvas) {
+            Rect b = getBounds();
+            float size = Math.min(b.width(), b.height()), cx = b.exactCenterX(), cy = b.exactCenterY(), u = size / 100f;
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(kind == YOUTUBE ? 0xFF8A2F2F : 0xFF56458A);
+            canvas.drawCircle(cx, cy, size / 2f, paint);
+            int cream = 0xFFF1ECE2;
+            paint.setColor(cream);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(5 * u);
+            path.reset();
+            if (kind == YOUTUBE) {
+                rect.set(cx - 26 * u, cy - 19 * u, cx + 26 * u, cy + 19 * u);
+                canvas.drawRoundRect(rect, 11 * u, 11 * u, paint);
+                path.moveTo(cx - 6 * u, cy - 10 * u); path.lineTo(cx + 10 * u, cy); path.lineTo(cx - 6 * u, cy + 10 * u);
+            } else {
+                canvas.drawCircle(cx, cy, 25 * u, paint);
+                paint.setStrokeWidth(2 * u);
+                paint.setPathEffect(new android.graphics.DashPathEffect(new float[]{3 * u, 7 * u}, 0));
+                paint.setAlpha(180);
+                canvas.drawCircle(cx, cy, 33 * u, paint);
+                paint.setPathEffect(null);
+                paint.setAlpha(255);
+                path.moveTo(cx - 5 * u, cy - 11 * u); path.lineTo(cx + 12 * u, cy); path.lineTo(cx - 5 * u, cy + 11 * u);
+            }
+            path.close();
+            paint.setStyle(Paint.Style.FILL);
+            canvas.drawPath(path, paint);
+        }
+        @Override public void setAlpha(int alpha) { }
+        @Override public void setColorFilter(android.graphics.ColorFilter filter) { }
+        @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+    }
+
+    /** Any other app's own icon, inside a soft circle so it matches the rest of the row. */
+    static final class RoundAppIcon extends Drawable {
+        private final Drawable icon;
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Path clip = new android.graphics.Path();
+        RoundAppIcon(Drawable icon) { this.icon = icon; paint.setColor(0x26E3B469); }
+        @Override public void draw(Canvas canvas) {
+            Rect b = getBounds();
+            float size = Math.min(b.width(), b.height()), cx = b.exactCenterX(), cy = b.exactCenterY();
+            canvas.drawCircle(cx, cy, size / 2f, paint);
+            if (icon == null) return;
+            int inner = Math.round(size * 0.62f);
+            int left = Math.round(cx - inner / 2f), top = Math.round(cy - inner / 2f);
+            canvas.save();
+            clip.reset();
+            clip.addCircle(cx, cy, inner / 2f, android.graphics.Path.Direction.CW);
+            canvas.clipPath(clip);
+            icon.setBounds(left, top, left + inner, top + inner);
+            icon.draw(canvas);
+            canvas.restore();
+        }
+        @Override public void setAlpha(int alpha) { }
+        @Override public void setColorFilter(android.graphics.ColorFilter filter) { }
+        @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+    }
+
     /** A home tile that opens a built-in screen, styled like the app tiles. */
     private View builtInTile(String title, Drawable iconDrawable, int rgb, int tab) {
         LinearLayout tile = new LinearLayout(this);
@@ -3907,8 +3970,8 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         tile.setClickable(true);
         tile.setFocusableInTouchMode(false);
         StateListDrawable states = new Motion.States();
-        states.addState(new int[]{android.R.attr.state_focused}, roundedShape(0xF2000000 | rgb, LiquidTheme.accent(this), 2, 16));
-        states.addState(new int[]{android.R.attr.state_pressed}, roundedShape(0xF2000000 | rgb, LiquidTheme.accent(this), 2, 16));
+        states.addState(new int[]{android.R.attr.state_focused}, roundedShape(0xF2000000 | rgb, GOLD_FOCUS, 2, 16));
+        states.addState(new int[]{android.R.attr.state_pressed}, roundedShape(0xF2000000 | rgb, GOLD_FOCUS, 2, 16));
         states.addState(new int[]{}, roundedShape(0xE0000000 | rgb, 0x66FFFFFF, 1, 16));
         tile.setBackground(states);
         tile.setElevation(dp(2));
