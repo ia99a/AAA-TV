@@ -24,12 +24,16 @@ import java.util.concurrent.Executors;
 /**
  * «الخلفيات»: framed paintings and calligraphy that fill the screen to its edges, fading slowly from
  * one to the next. The pictures ship inside the app (assets/frames, 3840×2160), so it works offline.
- * Left/Right change picture, OK shows the picture number, Back closes.
+ * Left/Right change picture, Up/Down change how often it changes (or pin it), Back closes.
  */
 final class GalleryView extends FrameLayout {
     static final String PREF_INDEX = "galleryIndex";
+    /** Minutes between pictures; 0 keeps the chosen picture on screen. */
+    static final String PREF_INTERVAL = "galleryInterval";
+    static final int[] INTERVALS = {1, 5, 15, 30, 60, 0};
+    static final int DEFAULT_INTERVAL = 1;
     private static final String FOLDER = "frames";
-    private static final long SLIDE_MS = 60_000L, FADE_MS = 2_000L;
+    private static final long FADE_MS = 2_000L;
 
     private final SharedPreferences preferences;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -108,6 +112,10 @@ final class GalleryView extends FrameLayout {
                 return true;
             case KeyEvent.KEYCODE_DPAD_UP:
             case KeyEvent.KEYCODE_DPAD_DOWN:
+                if (down && event.getRepeatCount() == 0) {
+                    stepInterval(code == KeyEvent.KEYCODE_DPAD_UP ? 1 : -1);
+                    flashLabel();
+                }
                 return true;
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
@@ -140,7 +148,7 @@ final class GalleryView extends FrameLayout {
                 slides[incoming].animate().alpha(1f).setDuration(FADE_MS).start();
                 slides[outgoing].animate().alpha(0f).setDuration(FADE_MS).start();
                 front = incoming;
-                handler.postDelayed(advance, SLIDE_MS);
+                schedule();
             });
         });
     }
@@ -162,13 +170,55 @@ final class GalleryView extends FrameLayout {
         }
     }
 
+    static int interval(SharedPreferences preferences) {
+        int minutes = preferences.getInt(PREF_INTERVAL, DEFAULT_INTERVAL);
+        for (int value : INTERVALS) if (value == minutes) return minutes;
+        return DEFAULT_INTERVAL;
+    }
+
+    static String intervalName(int minutes) {
+        switch (minutes) {
+            case 0: return "مثبّتة";
+            case 1: return "كل دقيقة";
+            case 60: return "كل ساعة";
+            case 5: return "كل ٥ دقائق";
+            default: return "كل " + ArabicFormat.digits(minutes) + " دقيقة";
+        }
+    }
+
+    /** Moves through the change intervals; Up goes towards "pinned". */
+    static int nextInterval(SharedPreferences preferences, int delta) {
+        int at = 0;
+        for (int i = 0; i < INTERVALS.length; i++) if (INTERVALS[i] == interval(preferences)) at = i;
+        int minutes = INTERVALS[Math.floorMod(at + delta, INTERVALS.length)];
+        preferences.edit().putInt(PREF_INTERVAL, minutes).apply();
+        return minutes;
+    }
+
+    private void stepInterval(int delta) {
+        nextInterval(preferences, delta);
+        schedule();
+    }
+
+    /** Re-reads the interval, for example after it was changed from the quick settings. */
+    void intervalChanged() { if (running) schedule(); }
+
+    private void schedule() {
+        handler.removeCallbacks(advance);
+        int minutes = interval(preferences);
+        if (running && minutes > 0) handler.postDelayed(advance, minutes * 60_000L);
+    }
+
     private void flashLabel() {
         if (pictures.isEmpty()) return;
+        int minutes = interval(preferences);
         label.setText(ArabicFormat.digits(String.valueOf(index + 1)) + " / "
-                + ArabicFormat.digits(String.valueOf(pictures.size())) + "   ·   يمين ويسار للتبديل");
+                + ArabicFormat.digits(String.valueOf(pictures.size()))
+                + "   ·   " + (minutes == 0 ? "الصورة مثبّتة" : "التبديل " + intervalName(minutes))
+                + "   ·   يمين/يسار: الصورة   فوق/تحت: المدة");
         label.animate().cancel();
         label.setAlpha(1f);
-        label.animate().alpha(0f).setStartDelay(3000).setDuration(800).start();
+        label.animate().alpha(0f).setStartDelay(4000).setDuration(800).start();
     }
 
     private int dp(float value) {

@@ -928,6 +928,7 @@ public final class MainActivity extends Activity {
                 saveWeatherLocation("city", new WeatherRepository.Location(city.name, city.latitude, city.longitude));
             }
             @Override public void onOpenAdvanced() { showSettings(); }
+            @Override public void onGalleryIntervalChanged(int minutes) { if (galleryView != null) galleryView.intervalChanged(); }
             @Override public List<String[]> installedApps() {
                 ArrayList<String[]> result = new ArrayList<>();
                 for (AppEntry entry : MainActivity.this.installedApps()) result.add(new String[]{entry.packageName, entry.label});
