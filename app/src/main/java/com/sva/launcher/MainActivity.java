@@ -880,6 +880,22 @@ public final class MainActivity extends Activity {
                 saveWeatherLocation("city", new WeatherRepository.Location(city.name, city.latitude, city.longitude));
             }
             @Override public void onOpenAdvanced() { showSettings(); }
+            @Override public List<String[]> installedApps() {
+                ArrayList<String[]> result = new ArrayList<>();
+                for (AppEntry entry : MainActivity.this.installedApps()) result.add(new String[]{entry.packageName, entry.label});
+                return result;
+            }
+            @Override public List<String> homeApps() {
+                List<AppEntry> all = MainActivity.this.installedApps();
+                List<String> selected = selectedPackages(all);
+                if (selected.isEmpty() && !preferences.getBoolean("customApps", false)) selected = defaultApps(all);
+                return selected;
+            }
+            @Override public void onHomeAppsChanged(List<String> packages) {
+                preferences.edit().putString("selectedApps", String.join("\n", packages))
+                        .putBoolean("customApps", true).apply();
+                renderApps();
+            }
         });
         sceneRoot.addView(quickSettings, new FrameLayout.LayoutParams(-1, -1));
         tabShell.removeView(navigation);
@@ -3704,6 +3720,58 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         return builtInTile("الحرم مباشر", new KaabaIcon(), 0x2B2A24, TAB_HARAM);
     }
 
+    /** The Saudi Quran channel's official YouTube channel, live from Masjid al-Haram. */
+    private static final String HARAM_CHANNEL = "UCos52azQNBgW63_9uDJoPDA";
+
+    /**
+     * Opens the official live broadcast in the YouTube app, which plays it in Full HD or 4K.
+     * If YouTube or the network is unavailable, the built-in player is used instead.
+     */
+    private void openHaramLive() {
+        lifecycleWork.execute(ioWorker, () -> {
+            String videoId = null;
+            try {
+                java.net.HttpURLConnection connection = (java.net.HttpURLConnection)
+                        new java.net.URL("https://www.youtube.com/channel/" + HARAM_CHANNEL + "/live").openConnection();
+                connection.setConnectTimeout(6000);
+                connection.setReadTimeout(8000);
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Chrome/128.0 Mobile Safari/537.36");
+                connection.setRequestProperty("Accept-Language", "ar,en;q=0.8");
+                try (java.io.InputStream input = connection.getInputStream()) {
+                    java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                    byte[] buffer = new byte[16384];
+                    int read;
+                    while ((read = input.read(buffer)) != -1 && out.size() < 2_000_000) out.write(buffer, 0, read);
+                    String html = out.toString("UTF-8");
+                    java.util.regex.Matcher m = java.util.regex.Pattern
+                            .compile("rel=\"canonical\" href=\"https://www\\.youtube\\.com/watch\\?v=([A-Za-z0-9_-]{11})").matcher(html);
+                    // Only a live broadcast page has a watch URL as its canonical link.
+                    if (m.find()) videoId = m.group(1);
+                } finally {
+                    connection.disconnect();
+                }
+            } catch (Exception ignored) { }
+            final String id = videoId;
+            lifecycleWork.post(() -> {
+                if (id != null && launchYouTubeVideo(id)) return;
+                selectTab(TAB_HARAM, false);
+            });
+        });
+    }
+
+    private boolean launchYouTubeVideo(String id) {
+        Uri uri = Uri.parse("https://www.youtube.com/watch?v=" + id);
+        for (String pkg : new String[]{"com.google.android.youtube.tv", "com.google.android.youtube", null}) {
+            try {
+                Intent intent = new Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (pkg != null) intent.setPackage(pkg);
+                startActivity(intent);
+                return true;
+            } catch (Exception ignored) { }
+        }
+        return false;
+    }
+
     /** A small gold Kaaba: a cube with its band, on the same soft round ground as the mushaf icon. */
     static final class KaabaIcon extends Drawable {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -3758,7 +3826,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(38), dp(38));
         iconParams.leftMargin = dp(10);
         tile.addView(icon, iconParams);
-        tile.setOnClickListener(v -> selectTab(tab, false));
+        tile.setOnClickListener(v -> { if (tab == TAB_HARAM) openHaramLive(); else selectTab(tab, false); });
         return tile;
     }
 

@@ -128,7 +128,7 @@ final class QuranView extends FrameLayout {
         Button previous = roundButton(context, "›", "السورة السابقة");
         previous.setOnClickListener(v -> step(-1));
         controls.addView(next, new LinearLayout.LayoutParams(dp(46), dp(46)));
-        LinearLayout.LayoutParams playParams = new LinearLayout.LayoutParams(dp(68), dp(68));
+        LinearLayout.LayoutParams playParams = new LinearLayout.LayoutParams(dp(78), dp(78));
         playParams.setMargins(dp(26), 0, dp(26), 0);
         controls.addView(playButton, playParams);
         controls.addView(previous, new LinearLayout.LayoutParams(dp(46), dp(46)));
@@ -605,10 +605,8 @@ final class QuranView extends FrameLayout {
             ring.setStyle(Paint.Style.FILL);
             glyph.setStyle(Paint.Style.FILL);
             glyph.setColor(0xFF1E2224);
-            setOnFocusChangeListener((v, focused) -> {
-                animate().scaleX(focused ? 1.08f : 1f).scaleY(focused ? 1.08f : 1f).setDuration(160).start();
-                invalidate();
-            });
+            // Focus shows a soft ring drawn inside the view's own bounds, so nothing is ever clipped.
+            setOnFocusChangeListener((v, focused) -> invalidate());
         }
 
         void setPlaying(boolean value) {
@@ -618,14 +616,14 @@ final class QuranView extends FrameLayout {
         }
 
         @Override protected void onDraw(Canvas canvas) {
-            float cx = getWidth() / 2f, cy = getHeight() / 2f, r = Math.min(cx, cy);
+            float cx = getWidth() / 2f, cy = getHeight() / 2f, r = Math.min(cx, cy) - dp(1);
             if (isFocused()) {
                 ring.setColor(0x33F1ECE2);
                 canvas.drawCircle(cx, cy, r, ring);
             }
             ring.setColor(INK);
-            canvas.drawCircle(cx, cy, r - dp(5), ring);
-            float s = r * 0.32f;
+            canvas.drawCircle(cx, cy, r - dp(7), ring);
+            float s = (r - dp(7)) * 0.36f;
             if (playing) {
                 float gap = s * 0.35f, width = s * 0.42f;
                 bar.set(cx - gap - width, cy - s, cx - gap, cy + s);
