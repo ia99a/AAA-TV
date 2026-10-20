@@ -35,7 +35,7 @@ final class QuickSettingsView extends FrameLayout {
 
     static final String PREF_WEATHER_CITY = "weatherCityKey";
     private static final int INK = 0xFFF1ECE2, SOFT = 0x99F1ECE2, GOLD = 0xFFE3B469;
-    private static final int MOOD = 0, COLOUR = 1, WEATHER = 2, APPS = 3, KIOSK = 4, ADVANCED = 5;
+    private static final int MOOD = 0, COLOUR = 1, WEATHER = 2, APPS = 3, KIOSK = 4;
 
     private final SharedPreferences preferences;
     private final Listener listener;
@@ -116,13 +116,12 @@ final class QuickSettingsView extends FrameLayout {
         }
         if (appsPage) return handleAppsKey(code, down, ok);
         if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
-            if (down && selected != ADVANCED && selected != APPS) change(code == KeyEvent.KEYCODE_DPAD_LEFT ? 1 : -1);
+            if (down && selected != APPS) change(code == KeyEvent.KEYCODE_DPAD_LEFT ? 1 : -1);
             return true;
         }
         if (ok) {
             if (!down) {
-                if (selected == ADVANCED) { close(); listener.onOpenAdvanced(); }
-                else if (selected == APPS) openApps();
+                if (selected == APPS) openApps();
                 else change(1);
             }
             return true;
@@ -148,7 +147,7 @@ final class QuickSettingsView extends FrameLayout {
         hint.setText("فوق/تحت للتنقل  ·  OK أو يمين/يسار للتغيير  ·  رجوع للإغلاق");
         list.removeAllViews();
         rows.clear();
-        for (int i = 0; i <= ADVANCED; i++) addRow();
+        for (int i = 0; i <= KIOSK; i++) addRow();
         refreshMain();
     }
 
@@ -189,7 +188,6 @@ final class QuickSettingsView extends FrameLayout {
         rows.get(APPS).setText("تطبيقات الشاشة الرئيسية وترتيبها");
         rows.get(KIOSK).setText("‹  المشغّل دائم على الشاشة: "
                 + (preferences.getBoolean(LauncherOverrideService.KIOSK, true) ? "يعمل" : "متوقف") + "  ›");
-        rows.get(ADVANCED).setText("الإعدادات المتقدمة");
         if (selected == COLOUR && !calm()) selected = MOOD;
         paint();
     }
