@@ -39,6 +39,8 @@ final class WeatherRepository {
         final double temperature, apparentTemperature, windSpeed;
         final int code;
         int humidity = -1;
+        /** Today's chance of rain in percent, or -1 when unknown. */
+        int rainToday = -1;
         final boolean day;
         final List<Day> days;
         Forecast(String location, long fetchedAt, double temperature, double apparentTemperature,
@@ -54,7 +56,7 @@ final class WeatherRepository {
                     .put("low", item.low).put("high", item.high).put("precipitation", item.precipitation));
             return new JSONObject().put("location", location).put("fetchedAt", fetchedAt)
                     .put("temperature", temperature).put("apparentTemperature", apparentTemperature)
-                    .put("humidity", humidity).put("windSpeed", windSpeed).put("code", code).put("day", day).put("days", daily);
+                    .put("humidity", humidity).put("rainToday", rainToday).put("windSpeed", windSpeed).put("code", code).put("day", day).put("days", daily);
         }
 
         static Forecast fromJson(JSONObject value) throws Exception {
@@ -70,6 +72,7 @@ final class WeatherRepository {
                     value.getDouble("temperature"), value.getDouble("apparentTemperature"),
                     value.getDouble("windSpeed"), value.getInt("code"), value.optBoolean("day", true), days);
             forecast.humidity = value.optInt("humidity", -1);
+            forecast.rainToday = value.optInt("rainToday", -1);
             return forecast;
         }
     }
@@ -122,6 +125,7 @@ final class WeatherRepository {
                 current.optDouble("wind_speed_10m", 0), current.getInt("weather_code"),
                 current.optInt("is_day", 1) == 1, days);
         forecast.humidity = current.optInt("relative_humidity_2m", -1);
+        forecast.rainToday = rain == null ? -1 : rain.optInt(0, -1);
         return forecast;
     }
 

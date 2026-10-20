@@ -97,9 +97,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 public final class MainActivity extends Activity {
-    private static final int TAB_HOME = 0, TAB_TV = 1, TAB_GAMES = 2, TAB_EVENTS = 3, TAB_SAVED = 4, TAB_PRAYER = 5, TAB_QURAN = 6;
-    private static final int LAST_TAB = TAB_QURAN;
-    private static final String[] TAB_TITLES = {"آمر", "Live TV", "Games", "تاريخك", "Saved", "الصلاة", "القرآن"};
+    private static final int TAB_HOME = 0, TAB_TV = 1, TAB_GAMES = 2, TAB_EVENTS = 3, TAB_SAVED = 4, TAB_PRAYER = 5, TAB_QURAN = 6, TAB_HARAM = 7;
+    private static final int LAST_TAB = TAB_HARAM;
+    private static final String[] TAB_TITLES = {"آمر", "Live TV", "Games", "تاريخك", "Saved", "الصلاة", "القرآن", "الحرم"};
     private static final String PREF_HIDE_LIVE_TV = "hideLiveTvNavigation";
     private static final String PREF_HIDE_GAMES = "hideGamesNavigation";
     private static final String PREF_HIDE_EVENTS = "hideEventsNavigation";
@@ -154,6 +154,8 @@ public final class MainActivity extends Activity {
     private PrayerView prayerView;
     private QuranView quranView;
     private FrameLayout sceneRoot;
+    private HaramView haramView;
+    private QuickSettingsView quickSettings;
     private LinearLayout launcherShell;
     private LinearLayout root, homeContent, liveContent, gamesContent, eventsContent, savedContent;
     private LinearLayout appRow, youtubeRow, youtubeSection;
@@ -260,6 +262,13 @@ public final class MainActivity extends Activity {
         iptv = new IptvRepository(this);
         acceptReminderIntent(getIntent());
         logoLoader = new ChannelLogoLoader(this);
+        if (!hasWeatherLocation()) {
+            // Riyadh until another city is chosen from the quick settings.
+            PrayerTimes.City riyadh = PrayerTimes.city(preferences.getString(QuickSettingsView.PREF_WEATHER_CITY, "riyadh"));
+            preferences.edit().putString("weatherLocationMode", "city").putString("weatherLocationLabel", riyadh.name)
+                    .putLong("weatherLatitude", Double.doubleToRawLongBits(riyadh.latitude))
+                    .putLong("weatherLongitude", Double.doubleToRawLongBits(riyadh.longitude)).apply();
+        }
         weatherForecast = cachedWeather();
         hiddenChannelKeys.addAll(HiddenChannels.load(preferences));
         favoriteChannelKeys.addAll(FavoriteChannels.load(preferences));
@@ -268,6 +277,7 @@ public final class MainActivity extends Activity {
         if (!folder.isEmpty()) backgroundPhotos.addAll(cachedBackgroundFolder(folder));
         else if (!album.isEmpty()) backgroundPhotos.addAll(cachedBackgroundAlbum(album));
         buildHome();
+        if (folder.isEmpty() && album.isEmpty()) applyMood();
         renderChannels();
         loadCachedChannels();
         if (!folder.isEmpty()) loadBackgroundFolder(Uri.parse(folder), false);
@@ -490,6 +500,7 @@ public final class MainActivity extends Activity {
                 && activeMediaController.getPlaybackState().getState() == PlaybackState.STATE_PLAYING;
         // Never interrupt a recitation with the screensaver.
         if (quranView != null && quranView.isPlaying()) playing = true;
+        if (haramView != null && haramView.getVisibility() == View.VISIBLE) playing = true;
         if (screenActive && settingsScreen == null && hasWindowFocus() && !playing) {
             startActivity(new Intent(this, ScreensaverPreviewActivity.class));
         } else if (screenActive) scheduleScreensaverIdle();
@@ -512,6 +523,7 @@ public final class MainActivity extends Activity {
         screenActive = true;
         PrayerAlertToast.foreground = new java.lang.ref.WeakReference<>(this);
         PrayerAlerts.schedule(this);
+        if (activeTab == TAB_HARAM && haramView != null && haramView.getVisibility() == View.VISIBLE) haramView.start();
         Set<String> freshHidden = HiddenChannels.load(preferences);
         Set<String> freshFavorites = FavoriteChannels.load(preferences);
         if (!freshHidden.equals(hiddenChannelKeys) || !freshFavorites.equals(favoriteChannelKeys)) {
@@ -569,6 +581,7 @@ public final class MainActivity extends Activity {
     @Override protected void onStop() {
         // Leaving the launcher (opening YouTube, say) pauses the recitation.
         if (quranView != null) quranView.pause();
+        if (haramView != null) haramView.pause();
         super.onStop();
     }
 
@@ -833,7 +846,10 @@ public final class MainActivity extends Activity {
         // The network, Android settings and launcher settings icons are hidden to keep the bar quiet.
         // Launcher settings open with the remote's Menu key, or a long press on «آمر».
         systemShortcuts.setVisibility(View.GONE);
-        tabButtons[TAB_HOME].setOnLongClickListener(v -> { showSettings(); return true; });
+        tabButtons[TAB_HOME].setOnLongClickListener(v -> {
+            if (quickSettings != null) quickSettings.open(); else showSettings();
+            return true;
+        });
         mirrorRow(navbar);
         FrameLayout viewport = new FrameLayout(this);
         viewport.setClipChildren(false);
@@ -852,6 +868,20 @@ public final class MainActivity extends Activity {
         tabPages[TAB_QURAN] = quranView;
         sceneRoot.addView(quranView, new FrameLayout.LayoutParams(-1, -1));
         linkTabEntry(TAB_QURAN, quranView.entryFocus());
+        haramView = new HaramView(this);
+        haramView.setVisibility(View.GONE);
+        tabPages[TAB_HARAM] = haramView;
+        sceneRoot.addView(haramView, new FrameLayout.LayoutParams(-1, -1));
+        linkTabEntry(TAB_HARAM, haramView.entryFocus());
+        quickSettings = new QuickSettingsView(this, preferences, new QuickSettingsView.Listener() {
+            @Override public void onMoodChanged(String mood) { clearPhotoWallpapers(); applyMood(); }
+            @Override public void onCalmColourChanged(int index) { clearPhotoWallpapers(); applyMood(); }
+            @Override public void onWeatherCityChanged(PrayerTimes.City city) {
+                saveWeatherLocation("city", new WeatherRepository.Location(city.name, city.latitude, city.longitude));
+            }
+            @Override public void onOpenAdvanced() { showSettings(); }
+        });
+        sceneRoot.addView(quickSettings, new FrameLayout.LayoutParams(-1, -1));
         tabShell.removeView(navigation);
         tabShell.addView(navigation, new LinearLayout.LayoutParams(-1, dp(dockHeight)));
         FrameLayout heroContent = new FrameLayout(this);
@@ -1240,6 +1270,9 @@ public final class MainActivity extends Activity {
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        if (quickSettings != null && quickSettings.isOpen()) return quickSettings.handleKey(event);
+        if (activeTab == TAB_HARAM && haramView != null && haramView.getVisibility() == View.VISIBLE
+                && settingsScreen == null && haramView.handleKey(event)) return true;
         // The Quran player handles its own remote keys, so the launcher's page navigation never steals them.
         if (activeTab == TAB_QURAN && quranView != null && quranView.getVisibility() == View.VISIBLE
                 && settingsScreen == null) {
@@ -1254,7 +1287,7 @@ public final class MainActivity extends Activity {
         }
         if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0 && settingsScreen == null
                 && (event.getKeyCode() == KeyEvent.KEYCODE_MENU || event.getKeyCode() == KeyEvent.KEYCODE_SETTINGS)) {
-            showSettings();
+            if (quickSettings != null) quickSettings.open(); else showSettings();
             return true;
         }
         if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
@@ -1546,9 +1579,11 @@ public final class MainActivity extends Activity {
         } finally {
             switchingTabs = false;
         }
-        if (launcherShell != null) launcherShell.setDescendantFocusability(selectedTab == TAB_QURAN
+        boolean fullScreen = selectedTab == TAB_QURAN || selectedTab == TAB_HARAM;
+        if (launcherShell != null) launcherShell.setDescendantFocusability(fullScreen
                 ? ViewGroup.FOCUS_BLOCK_DESCENDANTS : ViewGroup.FOCUS_AFTER_DESCENDANTS);
         if (selectedTab == TAB_QURAN && quranView != null) quranView.post(() -> quranView.entryFocus().requestFocus());
+        if (selectedTab == TAB_HARAM && haramView != null) haramView.post(() -> haramView.entryFocus().requestFocus());
         // On the prayer page the whole screen, bar included, takes the page's own calm colour.
         browsingShade.setBackgroundColor(selectedTab == TAB_PRAYER ? PrayerView.BACKGROUND
                 : (LiquidTheme.isLight(this) ? 0xFFE9F1EE : 0xFF071417));
@@ -2624,6 +2659,8 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         weatherLocation.setText(weatherForecast.location + "  ⌖");
         weatherMetrics.setText("الرياح " + ArabicFormat.digits(Math.round(wind)) + (mph ? " ميل/س" : " كم/س")
                 + (weatherForecast.humidity >= 0 ? "  ·  الرطوبة " + ArabicFormat.digits(weatherForecast.humidity) + "٪" : ""));
+        if (weatherForecast.rainToday >= 0) weatherDetails.append("  ·  " + (weatherForecast.rainToday >= 20
+                ? "احتمال المطر " + ArabicFormat.digits(weatherForecast.rainToday) + "٪" : "لا أمطار متوقعة"));
         weatherPanel.setContentDescription(weatherTemperature.getText() + ". " + weatherCondition.getText()
                 + ". " + weatherForecast.location + ". Wind " + Math.round(wind)
                 + (mph ? " mph" : " km/h") + ".");
@@ -3105,6 +3142,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             // The Quran player sits right beside YouTube.
             if (!quranTileAdded && packageName.startsWith("com.google.android.youtube")) {
                 appRow.addView(quranTile(tileWidth), 0, quranTileParams());
+                appRow.addView(haramTile(tileWidth), 0, quranTileParams());
                 quranTileAdded = true;
             }
             if (displayed == 0) {
@@ -3115,7 +3153,10 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             if (initialAppFocus && activeTab == TAB_HOME && settingsScreen == null
                     && packageName.equals(focusedPackage)) tile.requestFocus();
         }
-        if (!quranTileAdded) appRow.addView(quranTile(tileWidth), appRow.getChildCount(), quranTileParams());
+        if (!quranTileAdded) {
+            appRow.addView(quranTile(tileWidth), appRow.getChildCount(), quranTileParams());
+            appRow.addView(haramTile(tileWidth), 0, quranTileParams());
+        }
         if (displayed > 0) {
             tabButtons[TAB_HOME].setNextFocusUpId(appRow.getChildAt(appRow.getChildCount() - 1).getId());
         }
@@ -3655,8 +3696,42 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         return lp;
     }
 
-    /** A home tile that opens the built-in Quran player, styled like the app tiles. */
     private View quranTile(int tileWidth) {
+        return builtInTile("القرآن الكريم", new QuranView.MushafIcon(), 0x2F3E36, TAB_QURAN);
+    }
+
+    private View haramTile(int tileWidth) {
+        return builtInTile("الحرم مباشر", new KaabaIcon(), 0x2B2A24, TAB_HARAM);
+    }
+
+    /** A small gold Kaaba: a cube with its band, on the same soft round ground as the mushaf icon. */
+    static final class KaabaIcon extends Drawable {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        @Override public void draw(Canvas canvas) {
+            Rect b = getBounds();
+            float size = Math.min(b.width(), b.height()), cx = b.exactCenterX(), cy = b.exactCenterY();
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(0x26E3B469);
+            canvas.drawCircle(cx, cy, size / 2f, paint);
+            float w = size * 0.42f, h = size * 0.44f;
+            RectF cube = new RectF(cx - w / 2f, cy - h / 2f + size * 0.03f, cx + w / 2f, cy + h / 2f + size * 0.03f);
+            paint.setColor(0xFF15171A);
+            canvas.drawRoundRect(cube, size * 0.03f, size * 0.03f, paint);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(size * 0.04f);
+            paint.setColor(0xFFE3B469);
+            canvas.drawRoundRect(cube, size * 0.03f, size * 0.03f, paint);
+            paint.setStyle(Paint.Style.FILL);
+            float band = cube.top + h * 0.26f;
+            canvas.drawRect(cube.left, band, cube.right, band + size * 0.05f, paint);
+        }
+        @Override public void setAlpha(int alpha) { }
+        @Override public void setColorFilter(android.graphics.ColorFilter filter) { }
+        @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+    }
+
+    /** A home tile that opens a built-in screen, styled like the app tiles. */
+    private View builtInTile(String title, Drawable iconDrawable, int rgb, int tab) {
         LinearLayout tile = new LinearLayout(this);
         tile.setId(View.generateViewId());
         tile.setGravity(Gravity.CENTER);
@@ -3664,26 +3739,26 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         tile.setClickable(true);
         tile.setFocusableInTouchMode(false);
         StateListDrawable states = new Motion.States();
-        states.addState(new int[]{android.R.attr.state_focused}, roundedShape(0xF22F3E36, LiquidTheme.accent(this), 2, 16));
-        states.addState(new int[]{android.R.attr.state_pressed}, roundedShape(0xF22F3E36, LiquidTheme.accent(this), 2, 16));
-        states.addState(new int[]{}, roundedShape(0xE02F3E36, 0x66FFFFFF, 1, 16));
+        states.addState(new int[]{android.R.attr.state_focused}, roundedShape(0xF2000000 | rgb, LiquidTheme.accent(this), 2, 16));
+        states.addState(new int[]{android.R.attr.state_pressed}, roundedShape(0xF2000000 | rgb, LiquidTheme.accent(this), 2, 16));
+        states.addState(new int[]{}, roundedShape(0xE0000000 | rgb, 0x66FFFFFF, 1, 16));
         tile.setBackground(states);
         tile.setElevation(dp(2));
         tile.setOnFocusChangeListener(LiquidTheme::animateFocus);
         Motion.interaction(tile, false);
         tile.setPadding(dp(8), dp(4), dp(10), dp(4));
-        tile.setContentDescription("القرآن");
+        tile.setContentDescription(title);
         // Right to left: the icon at the right edge, the name beside it.
-        TextView name = label("القرآن الكريم", compactNavigation ? 13 : 14, 0xFFF1ECE2, true);
+        TextView name = label(title, compactNavigation ? 13 : 14, 0xFFF1ECE2, true);
         name.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
         name.setSingleLine(true);
         tile.addView(name, new LinearLayout.LayoutParams(0, -1, 1));
         View icon = new View(this);
-        icon.setBackground(new QuranView.MushafIcon());
+        icon.setBackground(iconDrawable);
         LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(38), dp(38));
         iconParams.leftMargin = dp(10);
         tile.addView(icon, iconParams);
-        tile.setOnClickListener(v -> selectTab(TAB_QURAN, false));
+        tile.setOnClickListener(v -> selectTab(tab, false));
         return tile;
     }
 
@@ -4139,10 +4214,52 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         if (screenActive && settingsScreen == null) showNextBackgroundPhoto();
     }
 
+    private boolean moodGalleryActive;
+
+    /** Applies the chosen background mood, unless a photo folder or album was set in the full settings. */
+    private void applyMood() {
+        if (!preferences.getString("wallpaperFolder", "").isEmpty()
+                || !preferences.getString("wallpaperAlbum", "").isEmpty()) return;
+        String mood = WallpaperMoods.current(preferences);
+        if (WallpaperMoods.CALM.equals(mood)) {
+            moodGalleryActive = false;
+            setBackgroundPhotos(new ArrayList<>()); // Shows the calm background.
+            return;
+        }
+        moodGalleryActive = true;
+        List<String> cached = WallpaperMoods.cached(preferences, mood);
+        if (!cached.isEmpty()) setBackgroundPhotos(moodPhotos(cached));
+        if (!WallpaperMoods.stale(preferences, mood)) return;
+        lifecycleWork.execute(ioWorker, () -> {
+            try {
+                List<String> fresh = WallpaperMoods.fetch(preferences, mood);
+                lifecycleWork.post(() -> {
+                    if (!mood.equals(WallpaperMoods.current(preferences)) || isFinishing()) return;
+                    List<BackgroundPhoto> photos = moodPhotos(fresh);
+                    if (!sameBackgroundPhotos(photos)) setBackgroundPhotos(photos);
+                });
+            } catch (Exception ignored) {
+                // Offline: keep whatever is showing, the calm background included.
+            }
+        });
+    }
+
+    private List<BackgroundPhoto> moodPhotos(List<String> urls) {
+        ArrayList<BackgroundPhoto> photos = new ArrayList<>();
+        for (String url : urls) photos.add(new BackgroundPhoto(Uri.parse(url), ""));
+        return photos;
+    }
+
+    /** Choosing a mood replaces any single photo, folder or album chosen in the full settings. */
+    private void clearPhotoWallpapers() {
+        preferences.edit().remove("wallpaper").remove("wallpaperFolder").remove("wallpaperAlbum").apply();
+    }
+
     private void scheduleNextBackgroundPhoto() {
         if (slideshowTick == null || !screenActive || settingsScreen != null || backgroundPhotos.size() < 2) return;
         handler.removeCallbacks(slideshowTick);
-        long interval = scheduleValue(SchedulePreferences.SLIDESHOW,
+        // Gallery moods change picture once a minute; a photo folder keeps its own setting.
+        long interval = moodGalleryActive ? 60_000L : scheduleValue(SchedulePreferences.SLIDESHOW,
                 SchedulePreferences.SLIDESHOW_VALUES, SchedulePreferences.DEFAULT_SLIDESHOW);
         if (interval > 0) handler.postDelayed(slideshowTick, interval);
     }
