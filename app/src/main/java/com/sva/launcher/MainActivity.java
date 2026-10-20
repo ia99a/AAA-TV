@@ -1736,6 +1736,47 @@ public final class MainActivity extends Activity {
 
     private static final String[] ARABIC_WEEKDAYS = {"الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"};
 
+    private int calendarEventColor(String title) {
+        switch (SaudiCalendar.kindOf(title)) {
+            case SaudiCalendar.ISLAMIC: return 0xAA1B6B4A;
+            case SaudiCalendar.WHITE_DAYS: return 0x88707C8A;
+            case SaudiCalendar.NATIONAL: return 0xAA0F5A35;
+            case SaudiCalendar.SCHOOL: return 0xAA7A5A1C;
+            default: break;
+        }
+        String name = title.toLowerCase(Locale.ROOT);
+        if (name.contains("ekadashi")) return 0xBB1252AE;
+        if (name.contains("purnima")) return 0xAA166E4B;
+        if (name.contains("lunch") || name.contains("holiday")) return 0xAA795A1C;
+        if (name.contains("navratri") || name.contains("dusshera")) return 0xAA84244F;
+        return 0xAA45418D;
+    }
+
+    private int calendarEventDotColor(String title) {
+        switch (SaudiCalendar.kindOf(title)) {
+            case SaudiCalendar.ISLAMIC: return 0xFF5FD39A;
+            case SaudiCalendar.WHITE_DAYS: return 0xFFF2F2EC;
+            case SaudiCalendar.NATIONAL: return 0xFF3CCB7F;
+            case SaudiCalendar.SCHOOL: return 0xFFFFC857;
+            default: break;
+        }
+        String name = title.toLowerCase(Locale.ROOT);
+        if (name.contains("ekadashi")) return 0xFF38AAFF;
+        if (name.contains("purnima")) return 0xFF27DF7F;
+        if (name.contains("lunch") || name.contains("holiday")) return 0xFFFFD438;
+        if (name.contains("navratri") || name.contains("dusshera")) return 0xFFFF69AE;
+        return 0xFFAD83FF;
+    }
+
+    /**
+     * Ellipsizes text according to actual Paint measurements.
+     *
+     * Example:
+     *
+     * "Waning gibbous" -> "Waning gib…"
+     * "Mahatma Gandhi Jayanti" -> "Mahatma Gand…"
+     */
+
     /** A multi-day holiday drawn as one continuous bar under the days it covers. */
     static final class CalendarBar {
         final String label;
@@ -2248,46 +2289,6 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
 
     }
 
-    private int calendarEventColor(String title) {
-        switch (SaudiCalendar.kindOf(title)) {
-            case SaudiCalendar.ISLAMIC: return 0xAA1B6B4A;
-            case SaudiCalendar.WHITE_DAYS: return 0x88707C8A;
-            case SaudiCalendar.NATIONAL: return 0xAA0F5A35;
-            case SaudiCalendar.SCHOOL: return 0xAA7A5A1C;
-            default: break;
-        }
-        String name = title.toLowerCase(Locale.ROOT);
-        if (name.contains("ekadashi")) return 0xBB1252AE;
-        if (name.contains("purnima")) return 0xAA166E4B;
-        if (name.contains("lunch") || name.contains("holiday")) return 0xAA795A1C;
-        if (name.contains("navratri") || name.contains("dusshera")) return 0xAA84244F;
-        return 0xAA45418D;
-    }
-
-    private int calendarEventDotColor(String title) {
-        switch (SaudiCalendar.kindOf(title)) {
-            case SaudiCalendar.ISLAMIC: return 0xFF5FD39A;
-            case SaudiCalendar.WHITE_DAYS: return 0xFFF2F2EC;
-            case SaudiCalendar.NATIONAL: return 0xFF3CCB7F;
-            case SaudiCalendar.SCHOOL: return 0xFFFFC857;
-            default: break;
-        }
-        String name = title.toLowerCase(Locale.ROOT);
-        if (name.contains("ekadashi")) return 0xFF38AAFF;
-        if (name.contains("purnima")) return 0xFF27DF7F;
-        if (name.contains("lunch") || name.contains("holiday")) return 0xFFFFD438;
-        if (name.contains("navratri") || name.contains("dusshera")) return 0xFFFF69AE;
-        return 0xFFAD83FF;
-    }
-
-    /**
-     * Ellipsizes text according to actual Paint measurements.
-     *
-     * Example:
-     *
-     * "Waning gibbous" -> "Waning gib…"
-     * "Mahatma Gandhi Jayanti" -> "Mahatma Gand…"
-     */
     private String ellipsize(
             String text,
             Paint paint,
