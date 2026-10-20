@@ -47,6 +47,8 @@ final class QuranView extends FrameLayout {
     private final PlayButton playButton;
     private final Button surahButton, reciterButton, repeatButton;
     private final FrameLayout picker;
+    private final LinearLayout column;
+    private ScrollView pickerScroll;
     private final LinearLayout pickerList;
     private final TextView pickerTitle;
     private ExoPlayer player;
@@ -82,7 +84,7 @@ final class QuranView extends FrameLayout {
         backdrop.setColor(BACKGROUNDS[0]);
         addView(backdrop, new LayoutParams(-1, -1));
 
-        LinearLayout column = new LinearLayout(context);
+        column = new LinearLayout(context);
         column.setOrientation(LinearLayout.VERTICAL);
         column.setGravity(Gravity.CENTER_HORIZONTAL);
         addView(column, new LayoutParams(dp(520), -2, Gravity.CENTER));
@@ -162,6 +164,7 @@ final class QuranView extends FrameLayout {
         pickerTitle.setGravity(Gravity.RIGHT);
         panel.addView(pickerTitle, new LinearLayout.LayoutParams(-1, -2));
         ScrollView scroll = new ScrollView(context);
+        pickerScroll = scroll;
         scroll.setVerticalScrollBarEnabled(false);
         pickerList = new LinearLayout(context);
         pickerList.setOrientation(LinearLayout.VERTICAL);
@@ -184,9 +187,68 @@ final class QuranView extends FrameLayout {
     /** Closes an open picker; returns true when Back was used for that. */
     boolean handleBack() {
         if (picker.getVisibility() != VISIBLE) return false;
-        picker.setVisibility(GONE);
-        surahButton.requestFocus();
+        closePicker(surahButton);
         return true;
+    }
+
+    /**
+     * Remote keys for the Quran screen. With a list open, Up/Down walk the rows and OK picks one;
+     * nothing behind the list can take focus. Returns true when the key was used.
+     */
+    boolean handleKey(android.view.KeyEvent event) {
+        int code = event.getKeyCode();
+        boolean down = event.getAction() == android.view.KeyEvent.ACTION_DOWN;
+        if (picker.getVisibility() == VISIBLE) {
+            if (code == android.view.KeyEvent.KEYCODE_BACK) {
+                if (!down) closePicker(surahButton);
+                return true;
+            }
+            int count = pickerList.getChildCount();
+            if (count == 0) return false;
+            int index = 0;
+            View focused = findFocus();
+            for (int i = 0; i < count; i++) if (pickerList.getChildAt(i) == focused) index = i;
+            int target = -1;
+            if (code == android.view.KeyEvent.KEYCODE_DPAD_DOWN) target = Math.min(count - 1, index + 1);
+            else if (code == android.view.KeyEvent.KEYCODE_DPAD_UP) target = Math.max(0, index - 1);
+            else if (code == android.view.KeyEvent.KEYCODE_PAGE_DOWN || code == android.view.KeyEvent.KEYCODE_CHANNEL_DOWN)
+                target = Math.min(count - 1, index + 8);
+            else if (code == android.view.KeyEvent.KEYCODE_PAGE_UP || code == android.view.KeyEvent.KEYCODE_CHANNEL_UP)
+                target = Math.max(0, index - 8);
+            if (target >= 0) {
+                if (down) focusRow(target);
+                return true;
+            }
+            if (code == android.view.KeyEvent.KEYCODE_DPAD_LEFT || code == android.view.KeyEvent.KEYCODE_DPAD_RIGHT) return true;
+            if (code == android.view.KeyEvent.KEYCODE_DPAD_CENTER || code == android.view.KeyEvent.KEYCODE_ENTER) {
+                if (!down && focused != null && focused.getParent() == pickerList) focused.performClick();
+                return true;
+            }
+            return false;
+        }
+        if (code == android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || code == android.view.KeyEvent.KEYCODE_MEDIA_PLAY
+                || code == android.view.KeyEvent.KEYCODE_MEDIA_PAUSE) {
+            if (down && event.getRepeatCount() == 0) togglePlay();
+            return true;
+        }
+        if (code == android.view.KeyEvent.KEYCODE_MEDIA_NEXT) { if (down) step(1); return true; }
+        if (code == android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS) { if (down) step(-1); return true; }
+        return false;
+    }
+
+    private void focusRow(int index) {
+        View row = pickerList.getChildAt(index);
+        row.requestFocus();
+        int top = row.getTop(), bottom = row.getBottom(), height = pickerScroll.getHeight();
+        int y = pickerScroll.getScrollY();
+        if (top < y) pickerScroll.smoothScrollTo(0, Math.max(0, top - dp(8)));
+        else if (bottom > y + height) pickerScroll.smoothScrollTo(0, bottom - height + dp(8));
+    }
+
+    private void closePicker(View focusAfter) {
+        picker.setVisibility(GONE);
+        column.setDescendantFocusability(FOCUS_AFTER_DESCENDANTS);
+        focusAfter.requestFocus();
     }
 
     /** Pauses when the launcher goes to the background, so recitation never plays over another app. */
@@ -312,7 +374,7 @@ final class QuranView extends FrameLayout {
         for (int i = 1; i <= 114; i++) {
             final int number = i;
             Button row = pickerRow(ArabicFormat.digits(i) + ".  " + QuranData.SURAHS[i - 1], QuranData.ayahCount(i), i == surah);
-            row.setOnClickListener(v -> { picker.setVisibility(GONE); selectSurah(number, true); surahButton.requestFocus(); });
+            row.setOnClickListener(v -> { closePicker(surahButton); selectSurah(number, true); });
             pickerList.addView(row, rowParams());
             if (i == surah) current = row;
         }
@@ -326,7 +388,7 @@ final class QuranView extends FrameLayout {
         for (int i = 0; i < QuranData.RECITERS.length; i++) {
             final int index = i;
             Button row = pickerRow(QuranData.RECITERS[i][0], "", i == reciter);
-            row.setOnClickListener(v -> { picker.setVisibility(GONE); selectReciter(index); reciterButton.requestFocus(); });
+            row.setOnClickListener(v -> { closePicker(reciterButton); selectReciter(index); });
             pickerList.addView(row, rowParams());
             if (i == reciter) current = row;
         }
@@ -334,8 +396,17 @@ final class QuranView extends FrameLayout {
     }
 
     private void showPicker(View current) {
+        // Nothing behind the list may take focus while it is open.
+        column.setDescendantFocusability(FOCUS_BLOCK_DESCENDANTS);
         picker.setVisibility(VISIBLE);
-        if (current != null) current.post(current::requestFocus);
+        pickerScroll.scrollTo(0, 0);
+        final int index = current == null ? 0 : pickerList.indexOfChild(current);
+        pickerList.post(() -> {
+            View row = pickerList.getChildAt(Math.max(0, index));
+            if (row == null) return;
+            row.requestFocus();
+            pickerScroll.scrollTo(0, Math.max(0, row.getTop() - pickerScroll.getHeight() / 2 + row.getHeight() / 2));
+        });
     }
 
     private Button pickerRow(String title, String note, boolean selected) {
@@ -349,6 +420,8 @@ final class QuranView extends FrameLayout {
         row.setMinHeight(0);
         row.setMinimumHeight(0);
         row.setBackground(focusBackground(dp(10)));
+        row.setFocusable(true);
+        row.setFocusableInTouchMode(false);
         return row;
     }
 

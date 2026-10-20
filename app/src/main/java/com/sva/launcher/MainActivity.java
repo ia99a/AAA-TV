@@ -153,6 +153,8 @@ public final class MainActivity extends Activity {
     private SharedPreferences preferences;
     private PrayerView prayerView;
     private QuranView quranView;
+    private FrameLayout sceneRoot;
+    private LinearLayout launcherShell;
     private LinearLayout root, homeContent, liveContent, gamesContent, eventsContent, savedContent;
     private LinearLayout appRow, youtubeRow, youtubeSection;
     private GridLayout gameGrid, calendarMonthGrid;
@@ -663,7 +665,9 @@ public final class MainActivity extends Activity {
         browsingShade.setBackgroundColor(light ? 0xFFE9F1EE : 0xFF071417);
         browsingShade.setAlpha(light ? 0.50f : 0f);
         scene.addView(browsingShade, new FrameLayout.LayoutParams(-1, -1));
+        sceneRoot = scene;
         LinearLayout tabShell = new LinearLayout(this);
+        launcherShell = tabShell;
         tabShell.setOrientation(LinearLayout.VERTICAL);
         tabShell.setClipChildren(false);
         tabShell.setClipToPadding(false);
@@ -840,10 +844,11 @@ public final class MainActivity extends Activity {
         eventsContent = addTabContentPage(viewport, TAB_EVENTS);
         savedContent = addTabContentPage(viewport, TAB_SAVED);
         addPrayerPage(viewport);
+        // The Quran player covers the whole screen, above the wallpaper and the navigation bar.
         quranView = new QuranView(this, preferences);
         quranView.setVisibility(View.GONE);
         tabPages[TAB_QURAN] = quranView;
-        viewport.addView(quranView, new FrameLayout.LayoutParams(-1, -1));
+        sceneRoot.addView(quranView, new FrameLayout.LayoutParams(-1, -1));
         linkTabEntry(TAB_QURAN, quranView.entryFocus());
         tabShell.removeView(navigation);
         tabShell.addView(navigation, new LinearLayout.LayoutParams(-1, dp(dockHeight)));
@@ -1233,6 +1238,13 @@ public final class MainActivity extends Activity {
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        // The Quran player handles its own remote keys, so the launcher's page navigation never steals them.
+        if (activeTab == TAB_QURAN && quranView != null && quranView.getVisibility() == View.VISIBLE
+                && settingsScreen == null) {
+            if (quranView.handleKey(event)) return true;
+            if (event.getKeyCode() != KeyEvent.KEYCODE_BACK && event.getKeyCode() != KeyEvent.KEYCODE_HOME)
+                return super.dispatchKeyEvent(event);
+        }
         if (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_CENTER || event.getKeyCode() == KeyEvent.KEYCODE_ENTER || event.getKeyCode() == KeyEvent.KEYCODE_NUMPAD_ENTER) {
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
                 event.startTracking();
@@ -1527,6 +1539,9 @@ public final class MainActivity extends Activity {
         } finally {
             switchingTabs = false;
         }
+        if (launcherShell != null) launcherShell.setDescendantFocusability(selectedTab == TAB_QURAN
+                ? ViewGroup.FOCUS_BLOCK_DESCENDANTS : ViewGroup.FOCUS_AFTER_DESCENDANTS);
+        if (selectedTab == TAB_QURAN && quranView != null) quranView.post(() -> quranView.entryFocus().requestFocus());
         browsingShade.setAlpha(selectedTab == TAB_HOME ? (LiquidTheme.isLight(this) ? .50f : 0f)
                 : (LiquidTheme.isLight(this) ? .88f : .65f));
         View selectedPage = tabPages[selectedTab];
