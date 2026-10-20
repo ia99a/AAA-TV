@@ -34,6 +34,10 @@ final class PrayerTimes {
             new City("makkah", "مكة المكرمة", 21.4225, 39.8262),
             new City("madinah", "المدينة المنورة", 24.4672, 39.6024),
             new City("dammam", "الدمام", 26.4207, 50.0888),
+            new City("hail", "حائل", 27.5114, 41.7208),
+            new City("hafar", "حفر الباطن", 28.4328, 45.9708),
+            new City("rafha", "رفحاء", 29.6202, 43.4948),
+            new City("arar", "عرعر", 30.9753, 41.0381),
     };
 
     static City city(String key) {
