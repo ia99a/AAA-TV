@@ -1,7 +1,8 @@
 name: TV APK
 # Builds an installable debug APK of this branch and publishes it as the "tv-latest" release,
 # so the TV can download it directly (for example with the Downloader app):
-#   https://github.com/<owner>/<repo>/releases/download/tv-latest/sva-tv.apk
+#   https://github.com/<owner>/<repo>/releases/download/tv-latest/aaa-tv.apk
+# (sva-tv.apk is the same file, kept so older links keep working)
 on:
   push:
     branches: [prayer-tab]
@@ -46,7 +47,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk sva-tv.apk
+          cp app/build/outputs/apk/debug/app-debug.apk aaa-tv.apk
+          cp aaa-tv.apk sva-tv.apk
           gh release delete tv-latest --yes --cleanup-tag || true
-          gh release create tv-latest sva-tv.apk --target "$GITHUB_SHA" \
-            --title "Sva TV (latest)" --notes "Built from ${GITHUB_SHA::7}" --prerelease
+          gh release create tv-latest aaa-tv.apk sva-tv.apk --target "$GITHUB_SHA" \
+            --title "AAA TV (latest)" --notes "Built from ${GITHUB_SHA::7}" --prerelease
