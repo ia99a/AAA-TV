@@ -25,7 +25,16 @@ jobs:
       - name: Install pinned Android toolchain
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358'
       - name: Build debug APK
-        run: ./gradlew --no-daemon assembleDebug
+        run: |
+          set -o pipefail
+          if ! ./gradlew --no-daemon assembleDebug 2>&1 | tee build.log; then
+            # Surface the first compiler and Gradle errors as annotations, readable without the raw log.
+            grep -E "error:|\.java:[0-9]+: |What went wrong|^> |FAILURE|Exception" build.log \
+              | grep -v "^> Task" | head -40 | while IFS= read -r line; do
+                echo "::error::${line//$'\r'/}"
+              done
+            exit 1
+          fi
       - name: Keep the APK with this run
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
