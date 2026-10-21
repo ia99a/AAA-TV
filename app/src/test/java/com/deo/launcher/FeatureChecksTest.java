@@ -2,14 +2,11 @@ package com.sva.launcher;
 
 import org.junit.Test;
 
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
-
-import javax.imageio.ImageIO;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -93,10 +90,27 @@ public final class FeatureChecksTest {
         assertNotNull(pictures);
         assertTrue(pictures.length >= 5);
         for (File picture : pictures) {
-            BufferedImage image = ImageIO.read(picture);
-            assertEquals(picture.getName(), 3840, image.getWidth());
-            assertEquals(picture.getName(), 2160, image.getHeight());
+            int[] size = jpegSize(java.nio.file.Files.readAllBytes(picture.toPath()));
+            assertEquals(picture.getName(), 3840, size[0]);
+            assertEquals(picture.getName(), 2160, size[1]);
             assertTrue(picture.getName() + " is too large", picture.length() < 4_000_000);
         }
+    }
+
+    /** Width and height from a JPEG's start-of-frame marker. */
+    private static int[] jpegSize(byte[] data) {
+        int i = 2;
+        while (i + 9 < data.length) {
+            if ((data[i] & 0xFF) != 0xFF) { i++; continue; }
+            int marker = data[i + 1] & 0xFF;
+            int length = ((data[i + 2] & 0xFF) << 8) | (data[i + 3] & 0xFF);
+            if (marker >= 0xC0 && marker <= 0xCF && marker != 0xC4 && marker != 0xC8 && marker != 0xCC) {
+                int height = ((data[i + 5] & 0xFF) << 8) | (data[i + 6] & 0xFF);
+                int width = ((data[i + 7] & 0xFF) << 8) | (data[i + 8] & 0xFF);
+                return new int[]{width, height};
+            }
+            i += 2 + length;
+        }
+        throw new AssertionError("not a JPEG");
     }
 }
