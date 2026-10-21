@@ -64,7 +64,8 @@ android {
             signingConfig signingConfigs.tv
         }
         release {
-            if (hasReleaseSigning) signingConfig signingConfigs.release
+            // The TV build is a release build (not debuggable), signed with the same fixed key.
+            signingConfig hasReleaseSigning ? signingConfigs.release : signingConfigs.tv
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile(

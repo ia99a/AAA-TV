@@ -9,6 +9,10 @@ public final class PrayerAlertReceiver extends BroadcastReceiver {
     /** Re-arms the next alert after a reboot, an app update, or a clock or time-zone change. */
     public static final class Rearm extends BroadcastReceiver {
         @Override public void onReceive(Context context, Intent intent) {
+            // This receiver is reachable by the system broadcasts below only; anything else is ignored.
+            String action = intent == null ? null : intent.getAction();
+            if (!Intent.ACTION_BOOT_COMPLETED.equals(action) && !Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)
+                    && !Intent.ACTION_TIME_CHANGED.equals(action) && !Intent.ACTION_TIMEZONE_CHANGED.equals(action)) return;
             PrayerAlerts.schedule(context.getApplicationContext());
         }
     }

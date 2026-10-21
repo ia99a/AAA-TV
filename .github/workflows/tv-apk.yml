@@ -1,5 +1,5 @@
 name: TV APK
-# Builds an installable debug APK of this branch and publishes it as the "tv-latest" release,
+# Builds an installable release APK (not debuggable) of this branch and publishes it as the "tv-latest" release,
 # so the TV can download it directly (for example with the Downloader app):
 #   https://github.com/<owner>/<repo>/releases/download/tv-latest/aaa-tv.apk
 # (sva-tv.apk is the same file, kept so older links keep working)
@@ -25,10 +25,10 @@ jobs:
           log-accepted-android-sdk-licenses: false
       - name: Install pinned Android toolchain
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358'
-      - name: Build debug APK
+      - name: Build release APK and run tests
         run: |
           set -o pipefail
-          if ! ./gradlew --no-daemon assembleDebug testDebugUnitTest 2>&1 | tee build.log; then
+          if ! ./gradlew --no-daemon assembleRelease testReleaseUnitTest 2>&1 | tee build.log; then
             # Surface the first compiler and Gradle errors as annotations, readable without the raw log.
             grep -E "error:|\.java:[0-9]+: |What went wrong|^> |FAILURE|Exception" build.log \
               | grep -v "^> Task" | head -40 | while IFS= read -r line; do
@@ -40,14 +40,14 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: sva-tv-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
       - name: Publish to the tv-latest release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk aaa-tv.apk
+          cp app/build/outputs/apk/release/app-release.apk aaa-tv.apk
           cp aaa-tv.apk sva-tv.apk
           gh release delete tv-latest --yes --cleanup-tag || true
           gh release create tv-latest aaa-tv.apk sva-tv.apk --target "$GITHUB_SHA" \

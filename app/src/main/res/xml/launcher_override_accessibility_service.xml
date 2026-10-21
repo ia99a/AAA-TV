@@ -2,5 +2,6 @@
     android:accessibilityEventTypes="typeWindowStateChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:canRetrieveWindowContent="false"
+    android:packageNames="com.google.android.tvlauncher,com.google.android.apps.tv.launcherx,com.google.android.leanbacklauncher,com.google.android.leanbacklauncher.recommendations"
     android:description="@string/launcher_override_service_description"
     android:notificationTimeout="100" />
