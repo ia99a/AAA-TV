@@ -6359,7 +6359,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             android.graphics.Bitmap decoded = uriValue == null ? null : decodeWallpaper(Uri.parse(uriValue), targetWidth, targetHeight);
             if (decoded == null) {
                 // No photo chosen: one of the calm built-in backgrounds.
-                decoded = CalmWallpapers.render(preferences.getInt(CalmWallpapers.PREF, CalmWallpapers.DEFAULT),
+                decoded = CalmWallpapers.render(MainActivity.this, preferences.getInt(CalmWallpapers.PREF, CalmWallpapers.DEFAULT),
                         Math.max(640, targetWidth), Math.max(360, targetHeight));
             }
             final android.graphics.Bitmap bitmap = decoded;

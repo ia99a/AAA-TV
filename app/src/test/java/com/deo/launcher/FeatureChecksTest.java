@@ -133,6 +133,19 @@ public final class FeatureChecksTest {
         assertEquals("ثانية", IqamaCountdown.unit(59));
     }
 
+    @Test public void damaskBackgroundsAreBuiltInAtFourK() throws Exception {
+        assertEquals(6 + CalmWallpapers.DAMASK.length, CalmWallpapers.NAMES.length);
+        assertTrue(CalmWallpapers.isDamask(CalmWallpapers.DEFAULT));
+        for (String key : CalmWallpapers.DAMASK) {
+            File picture = new File("src/main/assets/damask/" + key + ".jpg");
+            assertTrue(key + " is missing", picture.isFile());
+            int[] size = jpegSize(java.nio.file.Files.readAllBytes(picture.toPath()));
+            assertEquals(key, 3840, size[0]);
+            assertEquals(key, 2160, size[1]);
+            assertTrue(key + " is too large", picture.length() < 1_000_000);
+        }
+    }
+
     /** Width and height from a JPEG's start-of-frame marker. */
     private static int[] jpegSize(byte[] data) {
         int i = 2;
