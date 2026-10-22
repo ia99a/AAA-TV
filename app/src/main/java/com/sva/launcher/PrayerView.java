@@ -57,6 +57,8 @@ final class PrayerView extends FrameLayout {
     private long lastShift;
     private boolean running;
     private Boolean dimmed;
+    /** Gold ring counting down from the adhan to the iqama, to the left of the next-prayer card. */
+    private IqamaCountdown.Ring iqamaRing;
 
     private final Runnable tick = new Runnable() {
         @Override public void run() {
@@ -167,7 +169,16 @@ final class PrayerView extends FrameLayout {
         next.addView(progressTrack, trackParams);
         since = text(context, 12, INK_FAINT, null);
         addSpaced(next, since, 8);
-        top.addView(next, new LinearLayout.LayoutParams(0, -2, 1));
+        // The card and, on its left, the iqama ring while the adhan-to-iqama countdown runs.
+        LinearLayout nextRow = new LinearLayout(context);
+        nextRow.setGravity(Gravity.CENTER_VERTICAL);
+        iqamaRing = new IqamaCountdown.Ring(context);
+        iqamaRing.setVisibility(GONE);
+        LinearLayout.LayoutParams ringParams = new LinearLayout.LayoutParams(dp(176), dp(176));
+        ringParams.rightMargin = dp(22);
+        nextRow.addView(iqamaRing, ringParams);
+        nextRow.addView(next, new LinearLayout.LayoutParams(0, -2, 1));
+        top.addView(nextRow, new LinearLayout.LayoutParams(0, -2, 1));
 
         // Middle: the verse for today.
         LinearLayout verse = column(context);
@@ -213,6 +224,14 @@ final class PrayerView extends FrameLayout {
         mirror(nameLine);
         mirror(band);
         update();
+    }
+
+    /** The ring replaces the line countdown and the progress bar while it runs. */
+    private void showIqamaRing(boolean show) {
+        int ring = show ? VISIBLE : GONE, line = show ? GONE : VISIBLE;
+        if (iqamaRing.getVisibility() != ring) iqamaRing.setVisibility(ring);
+        if (countdown.getVisibility() != line) countdown.setVisibility(line);
+        if (progressTrack.getVisibility() != line) progressTrack.setVisibility(line);
     }
 
     /** The control the remote should land on when entering this tab. */
@@ -319,6 +338,8 @@ final class PrayerView extends FrameLayout {
             setIfChanged(since, "");
             countdown.setTextColor(INK);
             progress = fraction(previousAt, previousIqama, now);
+            iqamaRing.set(new IqamaCountdown.Window(previousPrayer, previousAt, previousIqama), now);
+            showIqamaRing(true);
         } else {
             LocalDateTime nextIqama = nextAt.plusMinutes(PrayerTimes.IQAMA_MINUTES[nextPrayer]);
             setIfChanged(eyebrow, "الصلاة القادمة");
@@ -329,6 +350,7 @@ final class PrayerView extends FrameLayout {
             setIfChanged(since, "مضى على " + PrayerTimes.NAMES[previousPrayer] + " " + ArabicFormat.duration(millis(previousAt, now)));
             countdown.setTextColor(LAMP);
             progress = fraction(previousIqama, nextAt, now);
+            showIqamaRing(false);
         }
         int trackWidth = progressTrack.getWidth();
         if (trackWidth > 0) {

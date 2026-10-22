@@ -97,6 +97,42 @@ public final class FeatureChecksTest {
         }
     }
 
+    @Test public void iqamaCountdownRunsOnlyBetweenAdhanAndIqama() {
+        LocalDate day = LocalDate.of(2026, 10, 22);
+        PrayerTimes.City riyadh = PrayerTimes.city("riyadh");
+        LocalDateTime[] t = PrayerTimes.forDay(day, riyadh.latitude, riyadh.longitude, 3);
+        LocalDateTime adhan = t[PrayerTimes.MAGHRIB], iqama = PrayerTimes.iqama(t, PrayerTimes.MAGHRIB);
+        assertEquals(null, IqamaCountdown.current("riyadh", adhan.minusSeconds(1), RIYADH));
+        IqamaCountdown.Window atAdhan = IqamaCountdown.current("riyadh", adhan, RIYADH);
+        assertNotNull(atAdhan);
+        assertEquals(PrayerTimes.MAGHRIB, atAdhan.prayer);
+        assertEquals(PrayerTimes.IQAMA_MINUTES[PrayerTimes.MAGHRIB] * 60L, atAdhan.secondsLeft(adhan));
+        assertEquals(1f, atAdhan.remaining(adhan), 0.0001f);
+        IqamaCountdown.Window halfway = IqamaCountdown.current("riyadh", adhan.plusMinutes(5), RIYADH);
+        assertEquals(0.5f, halfway.remaining(adhan.plusMinutes(5)), 0.01f);
+        assertEquals(null, IqamaCountdown.current("riyadh", iqama, RIYADH));
+    }
+
+    @Test public void iqamaCountdownCoversEveryPrayerInEveryCity() {
+        LocalDate day = LocalDate.of(2026, 10, 22);
+        for (PrayerTimes.City city : PrayerTimes.CITIES) {
+            LocalDateTime[] t = PrayerTimes.forDay(day, city.latitude, city.longitude, 3);
+            for (int prayer : new int[]{PrayerTimes.FAJR, PrayerTimes.DHUHR, PrayerTimes.ASR, PrayerTimes.MAGHRIB, PrayerTimes.ISHA}) {
+                IqamaCountdown.Window window = IqamaCountdown.current(city.key, t[prayer].plusSeconds(30), RIYADH);
+                assertNotNull(city.name + " " + prayer, window);
+                assertEquals(prayer, window.prayer);
+            }
+        }
+    }
+
+    @Test public void iqamaClockReadsWell() {
+        assertEquals("٢٥:٠٠", IqamaCountdown.clock(1500));
+        assertEquals("٥:٤٨", IqamaCountdown.clock(348));
+        assertEquals("٠:٠٧", IqamaCountdown.clock(7));
+        assertEquals("دقيقة", IqamaCountdown.unit(60));
+        assertEquals("ثانية", IqamaCountdown.unit(59));
+    }
+
     /** Width and height from a JPEG's start-of-frame marker. */
     private static int[] jpegSize(byte[] data) {
         int i = 2;

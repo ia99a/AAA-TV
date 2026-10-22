@@ -156,6 +156,8 @@ public final class MainActivity extends Activity {
     private FrameLayout sceneRoot;
     private HaramView haramView;
     private GalleryView galleryView;
+    /** Adhan-to-iqama countdown at the top left of Home, the Quran and the wallpapers. */
+    private IqamaCountdown.Pill iqamaPill;
     private QuickSettingsView quickSettings;
     private LinearLayout launcherShell;
     private LinearLayout root, homeContent, liveContent, gamesContent, eventsContent, savedContent;
@@ -921,6 +923,12 @@ public final class MainActivity extends Activity {
         tabPages[TAB_GALLERY] = galleryView;
         sceneRoot.addView(galleryView, new FrameLayout.LayoutParams(-1, -1));
         linkTabEntry(TAB_GALLERY, galleryView.entryFocus());
+        iqamaPill = new IqamaCountdown.Pill(this, preferences);
+        // On Home the pill takes the place of the next-occasion card while it shows.
+        iqamaPill.setListener(shown -> { if (homeCalendarCard != null) homeCalendarCard.setVisibility(shown ? View.INVISIBLE : View.VISIBLE); });
+        FrameLayout.LayoutParams pillParams = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.LEFT);
+        pillParams.setMargins(dp(30), dp(26), 0, 0);
+        sceneRoot.addView(iqamaPill, pillParams);
         quickSettings = new QuickSettingsView(this, preferences, new QuickSettingsView.Listener() {
             @Override public void onMoodChanged(String mood) { clearPhotoWallpapers(); applyMood(); }
             @Override public void onCalmColourChanged(int index) { clearPhotoWallpapers(); applyMood(); }
@@ -1656,6 +1664,7 @@ public final class MainActivity extends Activity {
             switchingTabs = false;
         }
         boolean fullScreen = selectedTab == TAB_QURAN || selectedTab == TAB_HARAM || selectedTab == TAB_GALLERY;
+        if (iqamaPill != null) iqamaPill.setAllowed(selectedTab == TAB_HOME || selectedTab == TAB_QURAN || selectedTab == TAB_GALLERY);
         if (launcherShell != null) launcherShell.setDescendantFocusability(fullScreen
                 ? ViewGroup.FOCUS_BLOCK_DESCENDANTS : ViewGroup.FOCUS_AFTER_DESCENDANTS);
         if (selectedTab == TAB_QURAN && quranView != null) quranView.post(() -> quranView.entryFocus().requestFocus());
