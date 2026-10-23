@@ -112,6 +112,7 @@ public final class ScreenshotPreview {
     @Test public void calendarMarchRamadan() throws Exception {
         shoot("harmattan", null, tab("TAB_EVENTS"), "calendar-march-2027", false, java.time.YearMonth.of(2027, 3));
     }
+    @Test public void quranGlass() throws Exception { shoot("tajawal", null, tab("TAB_QURAN"), "quran", false); }
     @Test public void homeTajawal() throws Exception { shoot("tajawal", null, tab("TAB_HOME"), "home-tajawal", false); }
     @Test public void homeFixed() throws Exception {
         shoot("tajawal", "gallery/nature/mountain-lake.jpg", tab("TAB_HOME"), "home-fixed", false);

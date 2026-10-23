@@ -2278,7 +2278,10 @@ public final class MainActivity extends Activity {
         int screenHeightDp = Math.round(getResources().getDisplayMetrics().heightPixels /
                 getResources().getDisplayMetrics().density);
         int rows = cells / 7;
-        int fittedHeight = (Math.max(300, screenHeightDp - 205) - 34) / rows - 7;
+        // «بسيط ٢» has a taller dock, so the grid leaves it more room at the bottom.
+        int reserved = ModernTheme.modern(preferences) ? Math.round(205 + 26 * getResources().getDisplayMetrics().widthPixels
+                / 960f / getResources().getDisplayMetrics().density) : 205;
+        int fittedHeight = (Math.max(300, screenHeightDp - reserved) - 34) / rows - 7;
         int cellHeight = Math.max(58, Math.min(94, Math.min(cellWidth, fittedHeight)));
         for (int visual = 0; visual < cells; visual++) {
             int i = (visual / 7) * 7 + (6 - visual % 7);
@@ -2312,6 +2315,9 @@ public final class MainActivity extends Activity {
                     bars.add(new CalendarBar("", calendarEventDotColor(event.title),
                             day.equals(first), day.equals(last)));
                 }
+                // Personal occasions (like «هبة الكريم») come first, so they keep their chip on a busy day.
+                eventTitles.sort((a, b) -> Boolean.compare(SaudiCalendar.kindOf(b) == SaudiCalendar.PERSONAL,
+                        SaudiCalendar.kindOf(a) == SaudiCalendar.PERSONAL));
                 CalendarDayButton dateButton = new CalendarDayButton(this);
                 dateButton.setContent(dayNumber, eventTitles, day.equals(LocalDate.now()));
                 dateButton.setHijri(SaudiCalendar.hijriCellLabel(day));
@@ -2751,26 +2757,37 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         // In «بسيط ٢» the chip grows with the chosen font so its text stays inside it.
         float chipHeight = glass ? Math.max(dp(13), chipTextPaint.getTextSize() * 1.3f + dp(2)) : dp(13);
         int fits = (int) Math.max(0, Math.floor((chipLimit - chipTop + dp(2)) / (chipHeight + dp(2))));
-        // When not all occasions fit, the last chip says how many more there are, so none is silently lost.
-        int shownChips = eventTitles.size() > fits && fits > 0 ? fits - 1 : Math.min(fits, eventTitles.size());
+        // When not all occasions fit, the last chip that fits keeps its title and carries a small "+N"
+        // count on its left, so no occasion is silently lost and the first ones stay readable.
+        int shownChips = Math.min(fits, eventTitles.size());
+        int hiddenChips = eventTitles.size() - shownChips;
         for (int i = 0; i < eventTitles.size(); i++) {
             if (chipTop + chipHeight > chipLimit) break;
-            if (i >= shownChips) {
-                int more = eventTitles.size() - shownChips;
-                chipPaint.setColor(0x33FFFFFF);
-                canvas.drawRoundRect(left, chipTop, right, chipTop + chipHeight, dp(7), dp(7), chipPaint);
-                chipTextPaint.setTextAlign(Paint.Align.CENTER);
-                canvas.drawText("+" + ArabicFormat.digits(more) + (more == 1 ? " مناسبة" : " مناسبات"), (left + right) / 2f,
-                        chipTop + chipHeight / 2f + chipTextPaint.getTextSize() * 0.35f, chipTextPaint);
-                chipTextPaint.setTextAlign(Paint.Align.LEFT);
-                break;
-            }
+            if (i >= shownChips) break;
             String eventTitle = eventTitles.get(i);
+            boolean carriesCount = glass && hiddenChips > 0 && i == shownChips - 1;
             chipPaint.setColor(calendarEventColor(eventTitle));
             canvas.drawRoundRect(left, chipTop, right, chipTop + chipHeight, dp(7), dp(7), chipPaint);
             todayPaint.setColor(calendarEventDotColor(eventTitle));
             canvas.drawCircle(right - dp(6), chipTop + chipHeight / 2f, dp(3), todayPaint);
-            String title = ellipsize(eventTitle, chipTextPaint, right - left - dp(20));
+            float countWidth = 0;
+            if (carriesCount) {
+                // A small round "+N" badge at the chip's left end.
+                String more = "+" + ArabicFormat.digits(hiddenChips);
+                countWidth = chipTextPaint.measureText(more) + dp(8);
+                todayPaint.setColor(0xE6FFFFFF);
+                canvas.drawRoundRect(left + dp(2), chipTop + dp(2), left + dp(2) + countWidth, chipTop + chipHeight - dp(2),
+                        dp(6), dp(6), todayPaint);
+                int keep = chipTextPaint.getColor();
+                chipTextPaint.setColor(0xFF14181E);
+                chipTextPaint.setTextAlign(Paint.Align.CENTER);
+                canvas.drawText(more, left + dp(2) + countWidth / 2f, chipTop + chipHeight / 2f
+                        + chipTextPaint.getTextSize() * 0.35f, chipTextPaint);
+                chipTextPaint.setTextAlign(Paint.Align.LEFT);
+                chipTextPaint.setColor(keep);
+                countWidth += dp(4);
+            }
+            String title = ellipsize(eventTitle, chipTextPaint, right - left - dp(20) - countWidth);
             Paint.FontMetrics chipMetrics = chipTextPaint.getFontMetrics();
             // Glass: centre on the letters themselves, since some fonts reserve a lot of space above them.
             float baseline = glass ? chipTop + chipHeight / 2f + chipTextPaint.getTextSize() * 0.35f
