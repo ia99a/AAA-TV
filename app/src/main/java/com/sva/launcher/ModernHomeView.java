@@ -73,6 +73,8 @@ final class ModernHomeView extends FrameLayout {
 
     private final Runnable tick = new Runnable() {
         @Override public void run() {
+            // Only while on screen: with «بسيط ١» chosen this view is hidden and the timer stops.
+            if (!isShown()) return;
             updateLive();
             handler.postDelayed(this, 1000 - (System.currentTimeMillis() % 1000));
         }
@@ -470,7 +472,6 @@ final class ModernHomeView extends FrameLayout {
             lastMinute = minute;
             if (!firstTime) {
                 // Day change, and the wisdom/poetry turn, are picked up once a minute.
-                View quote = findQuote();
                 boolean both = ModernTheme.card(preferences, "wisdom") && ModernTheme.card(preferences, "poetry");
                 if (both || (now.getHour() == 0 && now.getMinute() == 0)) { buildCards(); }
             }
@@ -505,13 +506,13 @@ final class ModernHomeView extends FrameLayout {
         }
         PrayerTimes.City city = PrayerTimes.city(cityKey);
         LocalDate today = now.toLocalDate();
-        LocalDateTime[] t = timesFor(today, city, zone), y = null;
+        LocalDateTime[] t = timesFor(today, city, zone);
         LocalDateTime next = null, previous = null;
         int nextPrayer = PrayerTimes.FAJR;
         for (int prayer : PRAYERS) if (t[prayer].isAfter(now)) { next = t[prayer]; nextPrayer = prayer; break; }
         if (next == null) next = timesFor(today.plusDays(1), city, zone)[PrayerTimes.FAJR];
         for (int i = PRAYERS.length - 1; i >= 0; i--) if (!t[PRAYERS[i]].isAfter(now)) { previous = t[PRAYERS[i]]; break; }
-        if (previous == null) { y = timesFor(today.minusDays(1), city, zone); previous = y[PrayerTimes.ISHA]; }
+        if (previous == null) previous = timesFor(today.minusDays(1), city, zone)[PrayerTimes.ISHA];
         long left = Math.max(0, Duration.between(now, next).toMinutes() + 1);
         double total = Math.max(1, Duration.between(previous, next).toMinutes());
         String value = left >= 60 ? ArabicFormat.digits(left / 60 + ":" + (left % 60 < 10 ? "0" : "") + left % 60)
