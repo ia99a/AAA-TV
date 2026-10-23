@@ -198,6 +198,12 @@ public final class MainActivity extends Activity {
     private FrameLayout heroFrame;
     /** «بسيط ١»: clock, weather and occasion above the apps; hidden under «بسيط ٢», which has its own cards. */
     private FrameLayout homeTopBar;
+    /** «الخلفية الثابتة»: a still picture behind «آمر», prayer and «تاريخك» in «بسيط ٢», above the usual background. */
+    private FrameLayout fixedLayer;
+    private ImageView fixedImage;
+    private View fixedVeil;
+    private String fixedLoaded;
+    private LinearLayout calendarHeading;
     private final GlassBackdrop glassBackdrop = new GlassBackdrop();
     private FrameLayout homePage;
     private boolean initialAppFocus;
@@ -739,6 +745,14 @@ public final class MainActivity extends Activity {
         browsingShade.setBackgroundColor(light ? 0xFFE9F1EE : 0xFF071417);
         browsingShade.setAlpha(light ? 0.50f : 0f);
         scene.addView(browsingShade, new FrameLayout.LayoutParams(-1, -1));
+        fixedLayer = new FrameLayout(this);
+        fixedLayer.setVisibility(View.GONE);
+        fixedImage = backgroundImage();
+        fixedLayer.addView(fixedImage, new FrameLayout.LayoutParams(-1, -1));
+        fixedVeil = new View(this);
+        fixedVeil.setBackgroundColor(0xFF05070A);
+        fixedLayer.addView(fixedVeil, new FrameLayout.LayoutParams(-1, -1));
+        scene.addView(fixedLayer, new FrameLayout.LayoutParams(-1, -1));
         sceneRoot = scene;
         LinearLayout tabShell = new LinearLayout(this);
         launcherShell = tabShell;
@@ -940,6 +954,7 @@ public final class MainActivity extends Activity {
         sceneRoot.addView(haramView, new FrameLayout.LayoutParams(-1, -1));
         linkTabEntry(TAB_HARAM, haramView.entryFocus());
         galleryView = new GalleryView(this, preferences);
+        galleryView.setOnFixedChanged(() -> { updateFixedBackground(); if (quickSettings != null) quickSettings.refresh(); });
         galleryView.setVisibility(View.GONE);
         tabPages[TAB_GALLERY] = galleryView;
         sceneRoot.addView(galleryView, new FrameLayout.LayoutParams(-1, -1));
@@ -959,6 +974,22 @@ public final class MainActivity extends Activity {
             @Override public void onOpenAdvanced() { showSettings(); }
             @Override public void onGalleryIntervalChanged(int minutes) { if (galleryView != null) galleryView.intervalChanged(); }
             @Override public void onHomeThemeChanged() { applyHomeTheme(); }
+            @Override public void onFixedBackgroundChanged() { updateFixedBackground(); }
+            @Override public void onPrayerSettingsChanged(boolean alertsTurnedOn) {
+                PrayerAlerts.schedule(MainActivity.this);
+                if (prayerView != null) prayerView.settingsChanged();
+                if (modernHome != null && ModernTheme.modern(preferences)) modernHome.rebuild();
+                // Showing the card over other apps needs "display over other apps"; ask once when turning on.
+                if (alertsTurnedOn && !android.provider.Settings.canDrawOverlays(MainActivity.this)) {
+                    try {
+                        startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                android.net.Uri.parse("package:" + getPackageName())));
+                    } catch (RuntimeException settingsMissing) {
+                        android.widget.Toast.makeText(MainActivity.this,
+                                "فعّل «العرض فوق التطبيقات» لـ AAA TV من إعدادات التلفزيون", android.widget.Toast.LENGTH_LONG).show();
+                    }
+                }
+            }
             @Override public void onGalleryCategoryChanged() { if (galleryView != null) galleryView.categoryChanged(); }
             @Override public List<String[]> installedApps() {
                 ArrayList<String[]> result = new ArrayList<>();
@@ -1341,8 +1372,7 @@ public final class MainActivity extends Activity {
         content.addView(title, titleParams);
         page.addView(content);
         page.setOnScrollChangeListener((v, x, y, oldX, oldY) -> {
-            if (activeTab == tab) browsingShade.setAlpha(Math.min(.94f,
-                    (LiquidTheme.isLight(this) ? .88f : .65f) + (float) y / dp(600) * .2f));
+            if (activeTab == tab) browsingShade.setAlpha(shadeAlpha(tab, y));
             glassBackdrop.invalidate();
         });
         tabPages[tab] = page;
@@ -1699,9 +1729,8 @@ public final class MainActivity extends Activity {
         // On the prayer page the whole screen, bar included, takes the page's own calm colour.
         browsingShade.setBackgroundColor(selectedTab == TAB_PRAYER ? PrayerView.BACKGROUND
                 : (LiquidTheme.isLight(this) ? 0xFFE9F1EE : 0xFF071417));
-        browsingShade.setAlpha(selectedTab == TAB_PRAYER ? 1f
-                : selectedTab == TAB_HOME ? (LiquidTheme.isLight(this) ? .50f : 0f)
-                : (LiquidTheme.isLight(this) ? .88f : .65f));
+        browsingShade.setAlpha(shadeAlpha(selectedTab, 0));
+        updateFixedBackground();
         View selectedPage = tabPages[selectedTab];
         if (selectedPage != null) {
             if (animatePage) Motion.reveal(selectedPage);
@@ -1713,6 +1742,55 @@ public final class MainActivity extends Activity {
                 else if (!keepNavigationFocus && previous != null && previous.isAttachedToWindow() && previous.isShown()) previous.requestFocus();
             });
         }
+    }
+
+    /** How much the plain colour covers the background: in «بسيط ٢» prayer and «تاريخك» let the background through. */
+    private float shadeAlpha(int tab, int scrollY) {
+        boolean glass = ModernTheme.modern(preferences);
+        if (tab == TAB_PRAYER) return glass ? .45f : 1f;
+        if (tab == TAB_HOME) return LiquidTheme.isLight(this) ? .50f : 0f;
+        float base = glass ? .40f : (LiquidTheme.isLight(this) ? .88f : .65f);
+        return Math.min(.94f, base + (float) scrollY / dp(600) * .2f);
+    }
+
+    private static String screenKey(int tab) {
+        return tab == TAB_HOME ? "home" : tab == TAB_PRAYER ? "prayer" : tab == TAB_EVENTS ? "events" : null;
+    }
+
+    /** Shows or hides the fixed background for the current tab, loading the picture when it changed. */
+    private void updateFixedBackground() {
+        if (fixedLayer == null) return;
+        String key = screenKey(activeTab);
+        boolean show = FixedBackground.showsOn(preferences, key);
+        if (!show) { fixedLayer.setVisibility(View.GONE); return; }
+        // The cards on prayer and «تاريخك» need a little more shade than the home cards.
+        fixedVeil.setAlpha(activeTab == TAB_HOME ? (ModernTheme.day(preferences) ? 0f : .18f) : .38f);
+        String asset = FixedBackground.picture(preferences);
+        fixedLayer.setVisibility(View.VISIBLE);
+        if (asset.equals(fixedLoaded)) return;
+        fixedLoaded = asset;
+        int width = getResources().getDisplayMetrics().widthPixels;
+        lifecycleWork.execute(ioWorker, () -> {
+            android.graphics.Bitmap bitmap = null;
+            try (java.io.InputStream bounds = getAssets().open(asset)) {
+                BitmapFactory.Options probe = new BitmapFactory.Options();
+                probe.inJustDecodeBounds = true;
+                BitmapFactory.decodeStream(bounds, null, probe);
+                int sample = 1;
+                while (probe.outWidth / (sample * 2) >= width) sample *= 2;
+                BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inSampleSize = sample;
+                try (java.io.InputStream in = getAssets().open(asset)) { bitmap = BitmapFactory.decodeStream(in, null, options); }
+            } catch (Exception | OutOfMemoryError ignored) { }
+            final android.graphics.Bitmap loaded = bitmap;
+            lifecycleWork.post(() -> {
+                if (!asset.equals(fixedLoaded)) { if (loaded != null) loaded.recycle(); return; }
+                if (loaded == null) { fixedLoaded = null; fixedLayer.setVisibility(View.GONE); return; }
+                fixedImage.setImageBitmap(loaded);
+                fixedImage.setAlpha(0f);
+                fixedImage.animate().alpha(1f).setDuration(600).start();
+            });
+        });
     }
 
     /** Live TV, Games and Saved are removed from this build of the launcher. */
@@ -1775,6 +1853,16 @@ public final class MainActivity extends Activity {
             }
         }
         if (iqamaPill != null) iqamaPill.setAllowed(iqamaPillAllowed(activeTab));
+        // «بسيط ٢» carries its glass look to prayer, «تاريخك» and the Quran.
+        if (prayerView != null) prayerView.setGlass(modern);
+        if (quranView != null) quranView.setGlass(modern);
+        if (calendarHeading != null) {
+            calendarHeading.setBackground(modern ? calendarGlassShape(0xC0141820, 0x22FFFFFF, 20) : null);
+            calendarHeading.setPadding(modern ? dp(14) : 0, 0, modern ? dp(14) : 0, 0);
+        }
+        if (calendarMonthGrid != null && displayedMonth != null) renderMonthCalendar(cachedCalendarEvents());
+        if (browsingShade != null) browsingShade.setAlpha(shadeAlpha(activeTab, 0));
+        updateFixedBackground();
         renderWeather();
         updateHomeCalendarWidget();
         renderApps();
@@ -1899,6 +1987,7 @@ public final class MainActivity extends Activity {
         if (eventsContent.getChildCount() > 0) eventsContent.getChildAt(0).setVisibility(View.GONE);
         eventsContent.setPadding(dp(28), dp(20), dp(28), dp(12));
         LinearLayout monthHeading = new LinearLayout(this);
+        calendarHeading = monthHeading;
         monthHeading.setGravity(Gravity.CENTER_VERTICAL);
         monthHeading.setClipChildren(false);
         monthHeading.setClipToPadding(false);
@@ -1992,6 +2081,7 @@ public final class MainActivity extends Activity {
             private final Paint rulePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
             @Override protected void dispatchDraw(Canvas canvas) {
+                if (ModernTheme.modern(preferences)) { super.dispatchDraw(canvas); return; }
                 rulePaint.setColor(LiquidTheme.isLight(MainActivity.this) ? 0x55708B88 : 0x558FAEAC);
                 rulePaint.setStrokeWidth(dp(1));
                 if (getChildCount() > 7) {
@@ -2137,7 +2227,7 @@ public final class MainActivity extends Activity {
                         light ? 0x554D6968 : 0xFF78818A, false);
                 overflow.setGravity(Gravity.TOP | Gravity.RIGHT);
                 overflow.setPadding(0, dp(8), dp(13), 0);
-                overflow.setBackgroundColor(Color.TRANSPARENT);
+                overflow.setBackground(ModernTheme.modern(preferences) ? glassTile(false, true) : null);
                 cell = overflow;
             } else {
                 LocalDate day = displayedMonth.atDay(dayNumber);
@@ -2188,9 +2278,11 @@ public final class MainActivity extends Activity {
                 cell = dateButton;
             }
             GridLayout.LayoutParams params = new GridLayout.LayoutParams();
-            params.width = dp(cellWidth);
-            params.height = dp(cellHeight);
-            params.setMargins(0, 0, 0, 0);
+            // «بسيط ٢»: each day is its own glass tile with a small gap around it.
+            int gap = ModernTheme.modern(preferences) ? dp(3) : 0;
+            params.width = dp(cellWidth) - 2 * gap;
+            params.height = dp(cellHeight) - 2 * gap;
+            params.setMargins(gap, gap, gap, gap);
             calendarMonthGrid.addView(cell, params);
         }
         updateCalendarDaySelection();
@@ -2234,6 +2326,13 @@ public final class MainActivity extends Activity {
         StateListDrawable states = new Motion.States();
         states.addState(new int[]{android.R.attr.state_focused}, calendarDayHighlight(true));
         states.addState(new int[]{android.R.attr.state_pressed}, calendarDayHighlight(true));
+        if (ModernTheme.modern(preferences)) {
+            states = new Motion.States();
+            states.addState(new int[]{android.R.attr.state_focused}, glassTile(true, false));
+            states.addState(new int[]{android.R.attr.state_pressed}, glassTile(true, false));
+            states.addState(new int[]{}, selected || today ? glassTile(true, false) : glassTile(false, false));
+            if (!selected && today) states = todayStates();
+        } else
         states.addState(new int[]{}, selected ? calendarDayHighlight(false)
                 : new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
         button.setBackground(states);
@@ -2246,6 +2345,24 @@ public final class MainActivity extends Activity {
                 .setInterpolator(new android.view.animation.DecelerateInterpolator())
                 .setDuration(android.animation.ValueAnimator.areAnimatorsEnabled() ? 150 : 0)
                 .start();
+    }
+
+    /** A day in the «بسيط ٢» calendar: dark glass, gold edge when chosen, fainter outside the month. */
+    private GradientDrawable glassTile(boolean gold, boolean faint) {
+        GradientDrawable shape = new GradientDrawable();
+        shape.setCornerRadius(dp(12));
+        shape.setColor(faint ? 0x66141820 : 0xB3141820);
+        shape.setStroke(gold ? dp(2) : Math.max(1, dp(1)), gold ? 0xFFE3B469 : 0x1FFFFFFF);
+        return shape;
+    }
+
+    private StateListDrawable todayStates() {
+        StateListDrawable states = new Motion.States();
+        states.addState(new int[]{android.R.attr.state_focused}, glassTile(true, false));
+        GradientDrawable today = glassTile(false, false);
+        today.setStroke(Math.max(1, dp(1)), 0x99FFFFFF);
+        states.addState(new int[]{}, today);
+        return states;
     }
 
     private Drawable calendarDayHighlight(boolean focused) {

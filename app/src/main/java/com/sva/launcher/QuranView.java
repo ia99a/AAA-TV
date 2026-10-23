@@ -52,6 +52,11 @@ final class QuranView extends FrameLayout {
     private final LinearLayout pickerList;
     private final TextView pickerTitle;
     private ExoPlayer player;
+    /** «بسيط ٢»: the royal pattern behind a glass card, with an arch emblem on top. */
+    private boolean glass;
+    private android.widget.ImageView glassBack;
+    private View glassVeil, emblem;
+    private boolean glassLoading;
     private int surah, reciter, colorIndex;
     private boolean repeat;
 
@@ -91,7 +96,7 @@ final class QuranView extends FrameLayout {
 
         surahNumber = text(context, 13, GOLD, null);
         column.addView(surahNumber);
-        surahName = text(context, 54, INK, Typeface.create(Typeface.SERIF, Typeface.NORMAL));
+        surahName = text(context, 54, INK, ModernTheme.typeface(context, "amiri", 400));
         surahName.setIncludeFontPadding(false);
         column.addView(surahName, spaced(4));
         details = text(context, 15, SOFT, null);
@@ -177,8 +182,97 @@ final class QuranView extends FrameLayout {
         picker.addView(panel, panelParams);
         addView(picker, new LayoutParams(-1, -1));
 
+        glassBack = new android.widget.ImageView(context);
+        glassBack.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+        glassBack.setVisibility(GONE);
+        addView(glassBack, 1, new LayoutParams(-1, -1));
+        glassVeil = new View(context);
+        glassVeil.setBackgroundColor(0x59000000);
+        glassVeil.setVisibility(GONE);
+        addView(glassVeil, 2, new LayoutParams(-1, -1));
+        emblem = new Emblem(context);
+        emblem.setVisibility(GONE);
+        LinearLayout.LayoutParams emblemParams = new LinearLayout.LayoutParams(dp(64), dp(64));
+        emblemParams.bottomMargin = dp(10);
+        column.addView(emblem, 0, emblemParams);
+
         refreshLabels();
         setRepeat(repeat);
+    }
+
+    /** Switches between the calm colour fields («بسيط ١») and the glass card over the pattern («بسيط ٢»). */
+    void setGlass(boolean value) {
+        if (glass == value) return;
+        glass = value;
+        backdrop.setVisibility(glass ? GONE : VISIBLE);
+        glassBack.setVisibility(glass ? VISIBLE : GONE);
+        glassVeil.setVisibility(glass ? VISIBLE : GONE);
+        emblem.setVisibility(glass ? VISIBLE : GONE);
+        surahName.setTextColor(glass ? GOLD : INK);
+        if (glass) {
+            GradientDrawable card = rounded(0xC0141820, dp(24));
+            card.setStroke(Math.max(1, dp(1)), 0x22FFFFFF);
+            column.setBackground(card);
+            column.setPadding(dp(36), dp(22), dp(36), dp(24));
+            loadPattern();
+        } else {
+            column.setBackground(null);
+            column.setPadding(0, 0, 0, 0);
+        }
+        LayoutParams params = (LayoutParams) column.getLayoutParams();
+        params.width = dp(glass ? 560 : 520);
+        column.setLayoutParams(params);
+    }
+
+    private void loadPattern() {
+        if (glassBack.getDrawable() != null || glassLoading) return;
+        glassLoading = true;
+        final int width = Math.max(1, getResources().getDisplayMetrics().widthPixels / 2);
+        final int height = Math.max(1, getResources().getDisplayMetrics().heightPixels / 2);
+        int chosen = preferences.getInt(CalmWallpapers.PREF, CalmWallpapers.DEFAULT);
+        final int index = CalmWallpapers.isDamask(chosen) ? chosen : CalmWallpapers.DEFAULT;
+        new Thread(() -> {
+            android.graphics.Bitmap bitmap = null;
+            try { bitmap = CalmWallpapers.render(getContext(), index, width, height); }
+            catch (RuntimeException | OutOfMemoryError ignored) { }
+            final android.graphics.Bitmap loaded = bitmap;
+            handler.post(() -> {
+                glassLoading = false;
+                if (loaded != null) glassBack.setImageBitmap(loaded);
+            });
+        }, "quran-pattern").start();
+    }
+
+    /** A thin gold ring holding a pointed arch, at the top of the glass card. */
+    private final class Emblem extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path arch = new Path();
+
+        Emblem(Context context) {
+            super(context);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            paint.setStrokeJoin(Paint.Join.ROUND);
+            paint.setColor(GOLD);
+        }
+
+        @Override protected void onDraw(Canvas canvas) {
+            float w = getWidth(), h = getHeight(), cx = w / 2f, cy = h / 2f, r = Math.min(w, h) / 2f - dp(1.5f);
+            paint.setStrokeWidth(dp(1.2f));
+            paint.setAlpha(150);
+            canvas.drawCircle(cx, cy, r, paint);
+            paint.setAlpha(255);
+            paint.setStrokeWidth(dp(1.8f));
+            float half = r * 0.36f, base = cy + r * 0.42f, shoulder = cy - r * 0.05f, peak = cy - r * 0.52f;
+            arch.reset();
+            arch.moveTo(cx - half, base);
+            arch.lineTo(cx - half, shoulder);
+            arch.quadTo(cx - half, peak + r * 0.12f, cx, peak);
+            arch.quadTo(cx + half, peak + r * 0.12f, cx + half, shoulder);
+            arch.lineTo(cx + half, base);
+            canvas.drawPath(arch, paint);
+            canvas.drawLine(cx, peak, cx, peak - r * 0.12f, paint);
+        }
     }
 
     /** The control the remote lands on when entering this tab. */

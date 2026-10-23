@@ -63,6 +63,28 @@ public final class ThemeSettingsSecurityTest {
         assertEquals("small", p.values.get(ModernTheme.PREF_TEXT_SIZE));
     }
 
+    @Test public void fixedBackgroundAcceptsOnlyBundledPictures() {
+        Prefs p = new Prefs();
+        assertEquals(null, FixedBackground.picture(p));
+        for (String bad : new String[]{"../../databases/x.jpg", "gallery/../frames/a.jpg", "/sdcard/a.jpg",
+                "gallery/secret/a.jpg", "frames/a.png", "frames/A.jpg", "frames/a.jpg\n", "content://x/a.jpg", ""}) {
+            assertFalse(bad, FixedBackground.set(p, bad));
+            p.values.put(FixedBackground.PREF_PICTURE, bad);
+            assertEquals(bad, null, FixedBackground.picture(p));
+        }
+        assertTrue(FixedBackground.set(p, "gallery/nature/mountain-lake.jpg"));
+        assertEquals("gallery/nature/mountain-lake.jpg", FixedBackground.picture(p));
+        // Only «بسيط ٢» shows it, and each screen can be switched off.
+        p.values.put(ModernTheme.PREF_THEME, ModernTheme.SIMPLE_1);
+        assertFalse(FixedBackground.showsOn(p, "home"));
+        p.values.put(ModernTheme.PREF_THEME, ModernTheme.SIMPLE_2);
+        assertTrue(FixedBackground.showsOn(p, "home"));
+        FixedBackground.toggle(p, "prayer");
+        assertFalse(FixedBackground.showsOn(p, "prayer"));
+        assertFalse(FixedBackground.showsOn(p, null));
+        assertTrue(FixedBackground.label("gallery/aviation/paper-plane.jpg").startsWith("طيران"));
+    }
+
     @Test public void barTabsAcceptOnlyKnownTabs() {
         Prefs p = new Prefs();
         p.values.put(ModernTheme.PREF_TABS, "quran,../secret,prayer,quran,settings,haram");

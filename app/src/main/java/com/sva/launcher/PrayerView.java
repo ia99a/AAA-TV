@@ -49,6 +49,11 @@ final class PrayerView extends FrameLayout {
     private final TextView verseTheme, verseText, verseRef;
     private final Button cityButton, alertButton;
     private final LinearLayout[] columns = new LinearLayout[6];
+    /** «بسيط ٢»: glass cards over the background instead of the plain dark page. */
+    private boolean glass;
+    private final LinearLayout clockCard, nextCard, verseCard, band;
+    private final View topDivider, bandRule;
+    private int nextColumn = -1;
     private final TextView[] columnName = new TextView[6], columnTime = new TextView[6], columnIqama = new TextView[6];
 
     private PrayerTimes.City city;
@@ -88,6 +93,7 @@ final class PrayerView extends FrameLayout {
         content.addView(top, new LinearLayout.LayoutParams(-1, 0, 1));
 
         LinearLayout clockColumn = column(context);
+        clockCard = clockColumn;
         LinearLayout timeLine = new LinearLayout(context);
         timeLine.setGravity(Gravity.BOTTOM | Gravity.RIGHT);
         time = text(context, 72, INK, Typeface.create("sans-serif-light", Typeface.NORMAL));
@@ -110,6 +116,7 @@ final class PrayerView extends FrameLayout {
         LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(dp(1), dp(120));
         dividerParams.setMargins(dp(28), 0, dp(28), 0);
         top.addView(divider, dividerParams);
+        topDivider = divider;
 
         LinearLayout next = column(context);
         LinearLayout eyebrowRow = new LinearLayout(context);
@@ -171,6 +178,7 @@ final class PrayerView extends FrameLayout {
         addSpaced(next, since, 8);
         // The card and, on its left, the iqama ring while the adhan-to-iqama countdown runs.
         LinearLayout nextRow = new LinearLayout(context);
+        nextCard = nextRow;
         nextRow.setGravity(Gravity.CENTER_VERTICAL);
         iqamaRing = new IqamaCountdown.Ring(context);
         iqamaRing.setVisibility(GONE);
@@ -182,8 +190,9 @@ final class PrayerView extends FrameLayout {
 
         // Middle: the verse for today.
         LinearLayout verse = column(context);
+        verseCard = verse;
         verseTheme = text(context, 13, LAMP, null);
-        verseText = text(context, 22, INK, Typeface.create(Typeface.SERIF, Typeface.NORMAL));
+        verseText = text(context, 22, INK, ModernTheme.typeface(context, ModernTheme.verseFont(preferences), 400));
         verseText.setLineSpacing(0, 1.15f);
         verseText.setMaxLines(2);
         verseText.setEllipsize(TextUtils.TruncateAt.END);
@@ -201,7 +210,8 @@ final class PrayerView extends FrameLayout {
         LinearLayout.LayoutParams ruleParams = new LinearLayout.LayoutParams(-1, dp(1));
         ruleParams.topMargin = dp(12);
         content.addView(rule, ruleParams);
-        LinearLayout band = new LinearLayout(context);
+        bandRule = rule;
+        band = new LinearLayout(context);
         band.setOrientation(LinearLayout.HORIZONTAL);
         for (int i = 0; i < 6; i++) {
             LinearLayout col = column(context);
@@ -224,6 +234,43 @@ final class PrayerView extends FrameLayout {
         mirror(nameLine);
         mirror(band);
         update();
+    }
+
+    /** Switches between the plain dark page («بسيط ١») and glass cards over the background («بسيط ٢»). */
+    void setGlass(boolean value) {
+        verseText.setTypeface(ModernTheme.typeface(getContext(), ModernTheme.verseFont(preferences), 400));
+        if (glass == value) return;
+        glass = value;
+        setBackgroundColor(glass ? Color.TRANSPARENT : BG);
+        topDivider.setVisibility(glass ? INVISIBLE : VISIBLE);
+        bandRule.setVisibility(glass ? INVISIBLE : VISIBLE);
+        int pad = glass ? dp(22) : 0;
+        for (LinearLayout card : new LinearLayout[]{clockCard, nextCard, verseCard}) {
+            card.setBackground(glass ? glassCard(false) : null);
+            card.setPadding(pad, glass ? dp(16) : 0, pad, glass ? dp(16) : 0);
+        }
+        // Cards sit side by side: a gap between them, and the band's columns become small cards.
+        LinearLayout.LayoutParams clockParams = (LinearLayout.LayoutParams) clockCard.getLayoutParams();
+        clockParams.setMargins(0, 0, 0, 0);
+        clockCard.setLayoutParams(clockParams);
+        for (int i = 0; i < 6; i++) {
+            LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) columns[i].getLayoutParams();
+            int gap = glass ? dp(5) : 0;
+            params.setMargins(gap, glass ? dp(4) : 0, gap, 0);
+            columns[i].setLayoutParams(params);
+            columns[i].setPadding(dp(glass ? 16 : 10), dp(10), dp(glass ? 16 : 10), glass ? dp(10) : 0);
+        }
+        paintColumns();
+    }
+
+    private void paintColumns() {
+        for (int i = 0; i < 6; i++) columns[i].setBackground(glass ? glassCard(i == nextColumn) : null);
+    }
+
+    private GradientDrawable glassCard(boolean gold) {
+        GradientDrawable shape = rounded(0xC0141820, dp(18));
+        shape.setStroke(gold ? dp(2) : Math.max(1, dp(1)), gold ? LAMP : 0x22FFFFFF);
+        return shape;
     }
 
     /** The ring replaces the line countdown and the progress bar while it runs. */
@@ -270,6 +317,14 @@ final class PrayerView extends FrameLayout {
         city = PrayerTimes.CITIES[(index + 1) % PrayerTimes.CITIES.length];
         preferences.edit().putString(PREF_CITY, city.key).apply();
         PrayerAlerts.schedule(getContext());
+        cachedDay = null;
+        update();
+    }
+
+    /** Re-reads the city and the alert switch after they were changed from the settings. */
+    void settingsChanged() {
+        city = PrayerTimes.city(preferences.getString(PREF_CITY, "riyadh"));
+        refreshAlertButton();
         cachedDay = null;
         update();
     }
@@ -363,6 +418,7 @@ final class PrayerView extends FrameLayout {
         boolean nextIsToday = nextIndex != -1;
         for (int i = 0; i < 6; i++) {
             boolean isNext = nextIsToday && i == nextPrayer;
+            if (isNext && nextColumn != i) { nextColumn = i; paintColumns(); }
             boolean past = !isNext && !today[i].isAfter(now);
             columnName[i].setTextColor(isNext ? LAMP : past ? INK_FAINT : INK_SOFT);
             columnTime[i].setTextColor(isNext ? INK : past ? INK_FAINT : INK);

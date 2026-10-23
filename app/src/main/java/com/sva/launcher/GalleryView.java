@@ -47,6 +47,9 @@ final class GalleryView extends FrameLayout {
     private final List<String> pictures = new ArrayList<>();
     private int front, index, generation;
     private boolean running;
+    /** A long press on OK pins the current picture as the fixed background, instead of changing category. */
+    private boolean longPressed;
+    private Runnable onFixedChanged;
     private final Runnable advance = () -> show(index + 1);
 
     GalleryView(Context context, SharedPreferences preferences) {
@@ -78,6 +81,8 @@ final class GalleryView extends FrameLayout {
     }
 
     View entryFocus() { return this; }
+
+    void setOnFixedChanged(Runnable listener) { onFixedChanged = listener; }
 
     @Override protected void onVisibilityChanged(View changedView, int visibility) {
         super.onVisibilityChanged(changedView, visibility);
@@ -116,8 +121,13 @@ final class GalleryView extends FrameLayout {
                 return true;
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
-                // OK moves to the next category.
-                if (!down) { nextCategory(preferences, 1); categoryChanged(); }
+                // OK moves to the next category; holding OK makes this picture the fixed background.
+                if (down && event.getRepeatCount() == 0) longPressed = false;
+                else if (down && !longPressed) { longPressed = true; pinCurrent(); }
+                else if (!down) {
+                    if (!longPressed) { nextCategory(preferences, 1); categoryChanged(); }
+                    longPressed = false;
+                }
                 return true;
             default:
                 return false;
@@ -249,13 +259,35 @@ final class GalleryView extends FrameLayout {
         if (running && minutes > 0) handler.postDelayed(advance, minutes * 60_000L);
     }
 
+    private void pinCurrent() {
+        if (pictures.isEmpty()) return;
+        String asset = pictures.get(Math.floorMod(index, pictures.size()));
+        if (!FixedBackground.set(preferences, asset)) return;
+        StringBuilder screens = new StringBuilder();
+        for (int i = 0; i < FixedBackground.SCREEN_KEYS.length; i++) {
+            if (!FixedBackground.on(preferences, FixedBackground.SCREEN_KEYS[i])) continue;
+            if (screens.length() > 0) screens.append(" و");
+            screens.append(FixedBackground.SCREEN_NAMES[i]);
+        }
+        showMessage(screens.length() == 0 ? "حُفظت الصورة خلفية ثابتة · فعّلها من الإعدادات ← الخلفيات"
+                : "صارت خلفية ثابتة لـ " + screens + (ModernTheme.modern(preferences) ? "" : " في «بسيط ٢»"));
+        if (onFixedChanged != null) onFixedChanged.run();
+    }
+
+    private void showMessage(String message) {
+        label.setText("●  " + message);
+        label.animate().cancel();
+        label.setAlpha(1f);
+        label.animate().alpha(0f).setStartDelay(4000).setDuration(800).start();
+    }
+
     private void flashLabel() {
         if (pictures.isEmpty()) return;
         int minutes = interval(preferences);
         label.setText(categoryName(preferences) + "   ·   " + ArabicFormat.digits(String.valueOf(index + 1)) + " / "
                 + ArabicFormat.digits(String.valueOf(pictures.size()))
                 + "   ·   " + (minutes == 0 ? "الصورة مثبّتة" : "التبديل " + intervalName(minutes))
-                + "   ·   يمين/يسار: الصورة   فوق/تحت: المدة   OK: التصنيف");
+                + "   ·   يمين/يسار: الصورة   فوق/تحت: المدة   OK: التصنيف   OK مطوّلًا: خلفية ثابتة");
         label.animate().cancel();
         label.setAlpha(1f);
         label.animate().alpha(0f).setStartDelay(4000).setDuration(800).start();
