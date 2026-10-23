@@ -315,8 +315,12 @@ final class PrayerView extends FrameLayout {
         verseCard.setBackground(null);
         verseCard.setPadding(0, 0, 0, 0);
         // The verse is a little smaller so the left card holds the clock and the verse.
-        verseText.setTextSize(TypedValue.COMPLEX_UNIT_SP, glass ? 19 : 22);
-        verseText.setMaxLines(glass ? 1 : 2);
+        verseText.setTextSize(TypedValue.COMPLEX_UNIT_SP, glass ? 17 : 22);
+        verseText.setMaxLines(2);
+        // Full width inside the card so a long verse wraps instead of disappearing.
+        LinearLayout.LayoutParams verseTextParams = (LinearLayout.LayoutParams) verseText.getLayoutParams();
+        verseTextParams.width = glass ? -1 : -2;
+        verseText.setLayoutParams(verseTextParams);
         LinearLayout.LayoutParams ringParams = (LinearLayout.LayoutParams) iqamaRing.getLayoutParams();
         ringParams.width = ringParams.height = dp(glass ? 150 : 176);
         iqamaRing.setLayoutParams(ringParams);
