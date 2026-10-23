@@ -271,6 +271,12 @@ final class PrayerView extends FrameLayout {
                 if (view != period && view != nextTime) view.setPadding(0, 0, 0, 0);
             }
         }
+        // Larger fonts (Jomhuria, or the large size) get taller top cards so the verse still fits.
+        if (glass) {
+            LinearLayout.LayoutParams topParams = (LinearLayout.LayoutParams) top.getLayoutParams();
+            topParams.height = dp(266 * (1f + Math.max(0f, Math.min(scale, 1.6f) - 1f) * 0.32f));
+            top.setLayoutParams(topParams);
+        }
         for (Button chip : new Button[]{cityButton, alertButton}) {
             chip.setTypeface(glass ? ModernTheme.typeface(getContext(), font, 400) : Typeface.DEFAULT);
             chip.setTextSize(TypedValue.COMPLEX_UNIT_SP, glass ? 14 * Math.min(scale, 1.2f) : 13);
