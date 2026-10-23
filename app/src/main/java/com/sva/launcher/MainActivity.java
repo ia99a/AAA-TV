@@ -267,6 +267,7 @@ public final class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        ModernIcons.init(this);
         BackNavigation.install(this, this::handleBack);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
         preferences = getSharedPreferences("launcher", MODE_PRIVATE);
@@ -2723,22 +2724,47 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
         datePaint.setColor(primary);
         datePaint.setTextAlign(Paint.Align.LEFT);
 
+        boolean glass = ModernTheme.modern(preferences);
         if (!hijriLabel.isEmpty()) {
-            hijriPaint.setTextSize(sp(11));
-            hijriPaint.setColor(secondary);
+            // The first day of a Hijri month carries the month's name and a small gold crescent.
+            boolean monthStart = hijriLabel.indexOf(' ') > 0;
+            hijriPaint.setTextSize(glass ? sp(10.5f * Math.min(homeTextScale(), 1.2f)) : sp(11));
+            if (glass) hijriPaint.setTypeface(homeTypeface(400));
+            hijriPaint.setColor(monthStart ? 0xFFE3B469 : secondary);
             hijriPaint.setTextAlign(Paint.Align.LEFT);
-            canvas.drawText(hijriLabel, left + dp(2), row1Baseline, hijriPaint);
+            float textLeft = left + dp(2);
+            if (monthStart) {
+                float size = hijriPaint.getTextSize() * 0.95f;
+                drawCrescent(canvas, textLeft + size / 2f, row1Baseline - size * 0.4f, size / 2f, 0xFFE3B469);
+                textLeft += size + dp(3);
+            }
+            canvas.drawText(ellipsize(hijriLabel, hijriPaint, Math.max(0, right - textLeft
+                    - datePaint.measureText(String.valueOf(dayNumber)) - dp(8))), textLeft, row1Baseline, hijriPaint);
         }
 
 
-        float barHeight = dp(4);
+        float barHeight = dp(glass ? 3 : 4);
         float chipLimit = getHeight() - getPaddingBottom() - dp(2) - bars.size() * (barHeight + dp(2));
 
         // Single-day occasions as chips: dot on the right, text reading right to left.
         float chipTop = row1Baseline + dp(3);
-        float chipHeight = dp(13);
+        // In «بسيط ٢» the chip grows with the chosen font so its text stays inside it.
+        float chipHeight = glass ? Math.max(dp(13), chipTextPaint.getTextSize() * 1.3f + dp(2)) : dp(13);
+        int fits = (int) Math.max(0, Math.floor((chipLimit - chipTop + dp(2)) / (chipHeight + dp(2))));
+        // When not all occasions fit, the last chip says how many more there are, so none is silently lost.
+        int shownChips = eventTitles.size() > fits && fits > 0 ? fits - 1 : Math.min(fits, eventTitles.size());
         for (int i = 0; i < eventTitles.size(); i++) {
             if (chipTop + chipHeight > chipLimit) break;
+            if (i >= shownChips) {
+                int more = eventTitles.size() - shownChips;
+                chipPaint.setColor(0x33FFFFFF);
+                canvas.drawRoundRect(left, chipTop, right, chipTop + chipHeight, dp(7), dp(7), chipPaint);
+                chipTextPaint.setTextAlign(Paint.Align.CENTER);
+                canvas.drawText("+" + ArabicFormat.digits(more) + (more == 1 ? " مناسبة" : " مناسبات"), (left + right) / 2f,
+                        chipTop + chipHeight / 2f + chipTextPaint.getTextSize() * 0.35f, chipTextPaint);
+                chipTextPaint.setTextAlign(Paint.Align.LEFT);
+                break;
+            }
             String eventTitle = eventTitles.get(i);
             chipPaint.setColor(calendarEventColor(eventTitle));
             canvas.drawRoundRect(left, chipTop, right, chipTop + chipHeight, dp(7), dp(7), chipPaint);
@@ -2746,13 +2772,27 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             canvas.drawCircle(right - dp(6), chipTop + chipHeight / 2f, dp(3), todayPaint);
             String title = ellipsize(eventTitle, chipTextPaint, right - left - dp(20));
             Paint.FontMetrics chipMetrics = chipTextPaint.getFontMetrics();
-            float baseline = chipTop + (chipHeight - chipMetrics.bottom + chipMetrics.top) / 2f - chipMetrics.top;
+            // Glass: centre on the letters themselves, since some fonts reserve a lot of space above them.
+            float baseline = glass ? chipTop + chipHeight / 2f + chipTextPaint.getTextSize() * 0.35f
+                    : chipTop + (chipHeight - chipMetrics.bottom + chipMetrics.top) / 2f - chipMetrics.top;
             chipTextPaint.setTextAlign(Paint.Align.RIGHT);
             canvas.drawText(title, right - dp(12), baseline, chipTextPaint);
             chipTextPaint.setTextAlign(Paint.Align.LEFT);
             chipTop += chipHeight + dp(2);
         }
 
+        if (glass) {
+            // «بسيط ٢»: each day is its own tile, so a multi-day line stays inside the tile, with rounded ends.
+            float barBottom = getHeight() - getPaddingBottom() - dp(2);
+            for (int i = bars.size() - 1; i >= 0; i--) {
+                CalendarBar bar = bars.get(i);
+                barPaint.setColor(bar.color);
+                canvas.drawRoundRect(left, barBottom - barHeight, right, barBottom, barHeight / 2f, barHeight / 2f, barPaint);
+                barBottom -= barHeight + dp(2);
+            }
+            canvas.restoreToCount(save);
+            return;
+        }
         canvas.restoreToCount(save);
 
         // Bars are drawn outside the padding clip so neighbouring days join into one line.
@@ -2782,6 +2822,15 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             barBottom = top - dp(2);
         }
 
+    }
+
+    private void drawCrescent(Canvas canvas, float cx, float cy, float radius, int color) {
+        Path moon = new Path(), cut = new Path();
+        moon.addCircle(cx, cy, radius, Path.Direction.CW);
+        cut.addCircle(cx + radius * 0.45f, cy - radius * 0.3f, radius * 0.85f, Path.Direction.CW);
+        moon.op(cut, Path.Op.DIFFERENCE);
+        todayPaint.setColor(color);
+        canvas.drawPath(moon, todayPaint);
     }
 
     private String ellipsize(
@@ -6945,7 +6994,8 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             canvas.translate(bounds.left, bounds.top);
             canvas.scale(bounds.width() / 24f, bounds.height() / 24f);
             paint.setColor(glyphColor);
-            String modern = modernGlyphs && kind == TAB_PRAYER ? "dome" : kind == TAB_GALLERY ? "gallery" : kind == TAB_HARAM ? "haram" : null;
+            String modern = modernGlyphs && kind == TAB_PRAYER ? "dome" : kind == TAB_GALLERY ? "gallery"
+                    : kind == TAB_HARAM ? "haram" : modernGlyphs && kind == TAB_QURAN ? "quran" : null;
             if (modern != null) {
                 paint.setStyle(Paint.Style.STROKE);
                 float stroke = paint.getStrokeWidth();

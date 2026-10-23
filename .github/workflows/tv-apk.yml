@@ -52,3 +52,15 @@ jobs:
           gh release delete tv-latest --yes --cleanup-tag || true
           gh release create tv-latest aaa-tv.apk sva-tv.apk --target "$GITHUB_SHA" \
             --title "AAA TV (latest)" --notes "Built from ${GITHUB_SHA::7}" --prerelease
+      - name: Draw review screenshots
+        continue-on-error: true
+        run: ./gradlew --no-daemon testReleaseUnitTest --tests 'com.sva.launcher.ScreenshotPreview' -Pscreens=true
+      - name: Keep the screenshots
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: screens
+          path: app/build/screens
+          if-no-files-found: warn
+          retention-days: 7

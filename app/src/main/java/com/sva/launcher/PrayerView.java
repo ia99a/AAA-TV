@@ -259,9 +259,16 @@ final class PrayerView extends FrameLayout {
                 float factor = sp >= 30 ? Math.min(scale, 1.12f) : scale * (sp < 15 ? 1.12f : 1f);
                 view.setTypeface(ModernTheme.typeface(getContext(), font, (Integer) entry[2]));
                 view.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp * factor);
+                // Trim the empty space some fonts keep above and below the letters.
+                if (view != period && view != nextTime) {
+                    float[] trim = ModernTheme.trim(font);
+                    float px = view.getTextSize();
+                    view.setPadding(0, -Math.round(trim[0] * px), 0, -Math.round(trim[1] * px));
+                }
             } else {
                 view.setTypeface((Typeface) entry[3]);
                 view.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
+                if (view != period && view != nextTime) view.setPadding(0, 0, 0, 0);
             }
         }
         for (Button chip : new Button[]{cityButton, alertButton}) {
@@ -287,7 +294,9 @@ final class PrayerView extends FrameLayout {
             verseParams.topMargin = dp(10);
             content.addView(verseCard, 1, verseParams);
         }
-        top.setLayoutParams(new LinearLayout.LayoutParams(-1, glass ? dp(236) : 0, glass ? 0 : 1));
+        // Glass: the cards grow with the font so no line (like the iqama time) is ever cut off.
+        top.setLayoutParams(new LinearLayout.LayoutParams(-1, glass ? -2 : 0, glass ? 0 : 1));
+        top.setMinimumHeight(glass ? dp(220) : 0);
         top.setGravity(glass ? Gravity.FILL_VERTICAL : Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams clockParams = new LinearLayout.LayoutParams(0, glass ? -1 : -2, glass ? 1f : 1.25f);
         clockCard.setLayoutParams(clockParams);
@@ -311,7 +320,7 @@ final class PrayerView extends FrameLayout {
         LinearLayout.LayoutParams ringParams = (LinearLayout.LayoutParams) iqamaRing.getLayoutParams();
         ringParams.width = ringParams.height = dp(glass ? 150 : 176);
         iqamaRing.setLayoutParams(ringParams);
-        LinearLayout.LayoutParams bandParams = new LinearLayout.LayoutParams(-1, glass ? dp(96) : -2);
+        LinearLayout.LayoutParams bandParams = new LinearLayout.LayoutParams(-1, -2);
         bandParams.topMargin = glass ? dp(14) : 0;
         band.setLayoutParams(bandParams);
         for (int i = 0; i < 6; i++) {

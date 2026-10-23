@@ -16,6 +16,30 @@ import android.graphics.drawable.Drawable;
 final class ModernIcons {
     private ModernIcons() { }
 
+    /** The prayer dome and the Quran (a stand under a dome) are drawn from the user's own icon artwork. */
+    private static android.graphics.Bitmap dome, quran;
+
+    static synchronized void init(android.content.Context context) {
+        if (dome == null) dome = mask(context, "icons/dome.png");
+        if (quran == null) quran = mask(context, "icons/quran.png");
+    }
+
+    private static android.graphics.Bitmap mask(android.content.Context context, String asset) {
+        try (java.io.InputStream in = context.getAssets().open(asset)) {
+            return android.graphics.BitmapFactory.decodeStream(in);
+        } catch (Exception | OutOfMemoryError missing) {
+            return null;
+        }
+    }
+
+    /** Draws an alpha mask in the given colour, filling the box. */
+    private static void drawMask(Canvas c, android.graphics.Bitmap bitmap, RectF box, Paint p) {
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        paint.setColorFilter(new android.graphics.PorterDuffColorFilter(p.getColor(), android.graphics.PorterDuff.Mode.SRC_IN));
+        paint.setAlpha(android.graphics.Color.alpha(p.getColor()));
+        c.drawBitmap(bitmap, null, box, paint);
+    }
+
     /** Line icon drawn in a {@code box}×{@code box} grid: yt, quran, haram, gallery, stremio, dome, calstar. */
     static final class Line extends Drawable {
         private final String kind;
@@ -59,6 +83,7 @@ final class ModernIcons {
                 tri(c, p, 17, 15.5f, 24, 20, 17, 24.5f);
                 break;
             case "quran":
+                if (quran != null) { drawMask(c, quran, new RectF(7, 7, 33, 33), p); break; }
                 c.drawRoundRect(new RectF(9, 7, 31, 34), 3, 3, p);
                 c.drawLine(27, 8, 27, 33, p);
                 star(c, p, 18, 19.5f, 4.4f, 1.9f);
@@ -83,6 +108,7 @@ final class ModernIcons {
                 tri(c, p, 17, 14.5f, 25, 20, 17, 25.5f);
                 break;
             case "dome":
+                if (dome != null) { drawMask(c, dome, new RectF(2.5f, 1.5f, 21.5f, 22.5f), p); break; }
                 // A single dome with a crescent, a low base and an arched door.
                 c.drawLine(3.5f, 21, 20.5f, 21, p);
                 path.moveTo(5.5f, 21); path.lineTo(5.5f, 15); path.lineTo(18.5f, 15); path.lineTo(18.5f, 21);
