@@ -105,7 +105,7 @@ final class WeatherRepository {
                 "https://api.open-meteo.com/v1/forecast?latitude=%.5f&longitude=%.5f"
                         + "&current=temperature_2m,apparent_temperature,weather_code,is_day,wind_speed_10m,relative_humidity_2m"
                         + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"
-                        + "&temperature_unit=celsius&wind_speed_unit=kmh&timezone=auto&forecast_days=4",
+                        + "&temperature_unit=celsius&wind_speed_unit=kmh&timezone=auto&forecast_days=5",
                 location.latitude, location.longitude);
         return parseForecast(new JSONObject(download(url)), location.label, now);
     }

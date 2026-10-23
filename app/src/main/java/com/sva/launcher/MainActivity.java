@@ -156,6 +156,13 @@ public final class MainActivity extends Activity {
     private FrameLayout sceneRoot;
     private HaramView haramView;
     private GalleryView galleryView;
+    /** «بسيط ٢»: the glass home, shown instead of the original home content when chosen. */
+    private ModernHomeView modernHome;
+    private ImageView dayBackdrop;
+    private View heroSideShade, heroBottomFade;
+    private LinearLayout navbarView;
+    /** Draw the «بسيط ٢» icons (the dome) in the bottom bar. */
+    private boolean modernGlyphs;
     /** Adhan-to-iqama countdown at the top left of Home, the Quran and the wallpapers. */
     private IqamaCountdown.Pill iqamaPill;
     private QuickSettingsView quickSettings;
@@ -280,6 +287,7 @@ public final class MainActivity extends Activity {
         if (!folder.isEmpty()) backgroundPhotos.addAll(cachedBackgroundFolder(folder));
         else if (!album.isEmpty()) backgroundPhotos.addAll(cachedBackgroundAlbum(album));
         buildHome();
+        applyHomeTheme();
         if (folder.isEmpty() && album.isEmpty()) applyMood();
         renderChannels();
         loadCachedChannels();
@@ -713,11 +721,17 @@ public final class MainActivity extends Activity {
                 light ? new int[]{0x55E9F1EE, 0x22E9F1EE, 0x00000000}
                       : new int[]{0xB5000D10, 0x44000D10, 0x00000000}));
         heroFrame.addView(sideShade, new FrameLayout.LayoutParams(-1, -1));
+        heroSideShade = sideShade;
         View bottomFade = new View(this);
         bottomFade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 light ? new int[]{0x00E9F1EE, 0x18E9F1EE, 0xCCE9F1EE}
                       : new int[]{0x00030C0E, 0x18030C0E, 0xE5030C0E}));
         heroFrame.addView(bottomFade, new FrameLayout.LayoutParams(-1, -1));
+        heroBottomFade = bottomFade;
+        // «بسيط ٢» day look: a pale version of the royal pattern over everything.
+        dayBackdrop = backgroundImage();
+        dayBackdrop.setVisibility(View.GONE);
+        heroFrame.addView(dayBackdrop, new FrameLayout.LayoutParams(-1, -1));
         scene.addView(heroFrame, new FrameLayout.LayoutParams(-1, -1));
         browsingShade = new View(this);
         browsingShade.setBackgroundColor(light ? 0xFFE9F1EE : 0xFF071417);
@@ -750,6 +764,7 @@ public final class MainActivity extends Activity {
         // A transparent bar: only the labels and the gold underline, no panel behind them.
         navbar.setBackground(null);
         navbar.setElevation(0);
+        navbarView = navbar;
         navigation.addView(navbar, new LinearLayout.LayoutParams(-2, dp(34)));
 
         int weatherMaxWidth = compactNavigation ? 165 : 195;
@@ -791,10 +806,11 @@ public final class MainActivity extends Activity {
                     new int[][]{new int[]{android.R.attr.state_selected}, new int[]{android.R.attr.state_focused}, new int[]{}},
                     new int[]{tabTextColor(true), tabTextColor(true), tabTextColor(false)}));
             glyph.setGlyphColor(tabTextColor(i == activeTab));
-            button.setOnClickListener(v -> selectTab(tab, false));
+            button.setOnClickListener(v -> { if (tab == TAB_HARAM) openHaramLive(); else selectTab(tab, false); });
             button.setOnFocusChangeListener((view, focused) -> {
                 LiquidTheme.animateContainedFocus(view, focused);
-                if (focused) selectTab(tab, false);
+                // Full-screen tabs open with OK only, so moving along the bar never jumps into them.
+                if (focused && !isFullScreenTab(tab)) selectTab(tab, false);
             });
             tabButtons[i] = button;
         }
@@ -902,6 +918,9 @@ public final class MainActivity extends Activity {
         tabShell.addView(viewport, new LinearLayout.LayoutParams(-1, 0, 1));
         tabPages[TAB_HOME] = page;
         viewport.addView(page, new FrameLayout.LayoutParams(-1, -1));
+        modernHome = new ModernHomeView(this, preferences);
+        modernHome.setVisibility(View.GONE);
+        page.addView(modernHome, new FrameLayout.LayoutParams(-1, -1));
         liveContent = addTabContentPage(viewport, TAB_TV);
         gamesContent = addTabContentPage(viewport, TAB_GAMES);
         eventsContent = addTabContentPage(viewport, TAB_EVENTS);
@@ -937,6 +956,8 @@ public final class MainActivity extends Activity {
             }
             @Override public void onOpenAdvanced() { showSettings(); }
             @Override public void onGalleryIntervalChanged(int minutes) { if (galleryView != null) galleryView.intervalChanged(); }
+            @Override public void onHomeThemeChanged() { applyHomeTheme(); }
+            @Override public void onGalleryCategoryChanged() { if (galleryView != null) galleryView.categoryChanged(); }
             @Override public List<String[]> installedApps() {
                 ArrayList<String[]> result = new ArrayList<>();
                 for (AppEntry entry : MainActivity.this.installedApps()) result.add(new String[]{entry.packageName, entry.label});
@@ -1664,7 +1685,9 @@ public final class MainActivity extends Activity {
             switchingTabs = false;
         }
         boolean fullScreen = selectedTab == TAB_QURAN || selectedTab == TAB_HARAM || selectedTab == TAB_GALLERY;
-        if (iqamaPill != null) iqamaPill.setAllowed(selectedTab == TAB_HOME || selectedTab == TAB_QURAN || selectedTab == TAB_GALLERY);
+        if (iqamaPill != null) iqamaPill.setAllowed(iqamaPillAllowed(selectedTab));
+        if (dayBackdrop != null) dayBackdrop.setVisibility(selectedTab == TAB_HOME && ModernTheme.modern(preferences)
+                && ModernTheme.day(preferences) ? View.VISIBLE : View.GONE);
         if (launcherShell != null) launcherShell.setDescendantFocusability(fullScreen
                 ? ViewGroup.FOCUS_BLOCK_DESCENDANTS : ViewGroup.FOCUS_AFTER_DESCENDANTS);
         if (selectedTab == TAB_QURAN && quranView != null) quranView.post(() -> quranView.entryFocus().requestFocus());
@@ -1690,12 +1713,135 @@ public final class MainActivity extends Activity {
     }
 
     /** Live TV, Games and Saved are removed from this build of the launcher. */
+    private static boolean isFullScreenTab(int tab) {
+        return tab == TAB_QURAN || tab == TAB_HARAM || tab == TAB_GALLERY;
+    }
+
+    private static int tabForKey(String key) {
+        switch (key) {
+            case "events": return TAB_EVENTS;
+            case "quran": return TAB_QURAN;
+            case "gallery": return TAB_GALLERY;
+            case "haram": return TAB_HARAM;
+            default: return TAB_PRAYER;
+        }
+    }
+
+    /** The adhan-to-iqama pill: on Home in «بسيط ١» (in «بسيط ٢» the prayer card counts down), the Quran and the wallpapers. */
+    private boolean iqamaPillAllowed(int tab) {
+        if (tab == TAB_HOME) return !ModernTheme.modern(preferences) || !ModernTheme.card(preferences, "prayer");
+        return tab == TAB_QURAN || tab == TAB_GALLERY;
+    }
+
+    /** Switches between «بسيط ١» and «بسيط ٢» and applies the day/night look, font, cards and tabs. */
+    private void applyHomeTheme() {
+        boolean modern = ModernTheme.modern(preferences);
+        boolean day = modern && ModernTheme.day(preferences);
+        modernGlyphs = modern;
+        if (root != null) root.setVisibility(modern ? View.GONE : View.VISIBLE);
+        if (modernHome != null) {
+            modernHome.setVisibility(modern ? View.VISIBLE : View.GONE);
+            if (modern) modernHome.rebuild();
+        }
+        if (heroSideShade != null) heroSideShade.setVisibility(modern ? View.GONE : View.VISIBLE);
+        if (heroBottomFade != null) heroBottomFade.setVisibility(modern ? View.GONE : View.VISIBLE);
+        if (dayBackdrop != null) {
+            if (day && dayBackdrop.getDrawable() == null) {
+                int width = getResources().getDisplayMetrics().widthPixels;
+                lifecycleWork.execute(ioWorker, () -> {
+                    android.graphics.Bitmap bitmap = null;
+                    try (java.io.InputStream in = getAssets().open("damask/day.jpg")) {
+                        BitmapFactory.Options options = new BitmapFactory.Options();
+                        options.inSampleSize = width <= 1920 ? 2 : 1;
+                        bitmap = BitmapFactory.decodeStream(in, null, options);
+                    } catch (Exception | OutOfMemoryError ignored) { }
+                    final android.graphics.Bitmap loaded = bitmap;
+                    lifecycleWork.post(() -> { if (loaded != null) dayBackdrop.setImageBitmap(loaded); });
+                });
+            }
+            dayBackdrop.setVisibility(day && activeTab == TAB_HOME ? View.VISIBLE : View.GONE);
+        }
+        styleNavigation(modern, day);
+        rebuildNavigationButtons();
+        for (int i = 0; i < tabButtons.length; i++) {
+            if (tabButtons[i] != null && navigationGlyphs[i] != null) {
+                navigationGlyphs[i].setGlyphColor(tabTextColor(i == activeTab));
+                navigationGlyphs[i].invalidateSelf();
+            }
+        }
+        if (iqamaPill != null) iqamaPill.setAllowed(iqamaPillAllowed(activeTab));
+        renderWeather();
+        updateHomeCalendarWidget();
+        renderApps();
+    }
+
+    /** «بسيط ٢»: icons only, larger, on a glass pill. «بسيط ١»: the labelled transparent bar. */
+    private void styleNavigation(boolean modern, boolean day) {
+        if (navbarView != null) {
+            if (modern) {
+                GradientDrawable pill = new GradientDrawable();
+                pill.setColor(day ? 0x99FFFFFF : 0xC0141820);
+                pill.setCornerRadius(dp(20));
+                pill.setStroke(Math.max(1, dp(1)), day ? 0xCCFFFFFF : 0x22FFFFFF);
+                navbarView.setBackground(pill);
+            } else {
+                navbarView.setBackground(null);
+            }
+        }
+        for (int i = 0; i < tabButtons.length; i++) {
+            Button button = tabButtons[i];
+            if (button == null || navigationGlyphs[i] == null) continue;
+            int size = modern ? dp(21) : dp(16);
+            navigationGlyphs[i].setBounds(0, 0, size, size);
+            button.setText(modern ? "" : TAB_TITLES[i]);
+            button.setContentDescription(TAB_TITLES[i]);
+            button.setCompoundDrawablePadding(modern ? 0 : dp(6));
+            int pad = modern ? dp(16) : dp(compactNavigation ? 12 : (i == TAB_HOME ? 18 : 10));
+            button.setPadding(pad, 0, pad, 0);
+            button.setCompoundDrawablesRelative(null, null, navigationGlyphs[i], null);
+        }
+    }
+
+    /** Fills the «بسيط ٢» tiles: the chosen apps, with the Quran, Haram and wallpapers beside YouTube. */
+    private void showModernApps(List<AppEntry> all, List<String> selected) {
+        if (modernHome == null) return;
+        ArrayList<ModernHomeView.App> list = new ArrayList<>();
+        boolean builtIns = false;
+        for (String packageName : selected) {
+            AppEntry entry = findApp(all, packageName);
+            if (entry == null) continue;
+            boolean youtube = packageName.startsWith("com.google.android.youtube");
+            boolean stremio = packageName.equals("com.stremio.one");
+            list.add(new ModernHomeView.App(entry.label, youtube ? "yt" : stremio ? "stremio" : "app",
+                    youtube || stremio ? null : entry.icon, packageName, () -> launchApp(entry.packageName)));
+            if (youtube && !builtIns) { addModernBuiltIns(list); builtIns = true; }
+        }
+        if (!builtIns) addModernBuiltIns(list);
+        View first = modernHome.setApps(list);
+        if (!ModernTheme.modern(preferences) || first == null) return;
+        tabEntryFocus[TAB_HOME] = first;
+        tabButtons[TAB_HOME].setNextFocusUpId(first.getId());
+        for (int i = 0; i < tabButtons.length; i++) if (tabButtons[i] != null) tabButtons[i].setNextFocusUpId(first.getId());
+        if (activeTab == TAB_HOME && settingsScreen == null && (quickSettings == null || !quickSettings.isOpen())) {
+            View target = modernHome.tileFor(modernHome.focusedTag());
+            View current = getCurrentFocus();
+            if (target != null && (current == null || !current.isShown() || current.getParent() == appRow))
+                modernHome.post(target::requestFocus);
+        }
+    }
+
+    private void addModernBuiltIns(List<ModernHomeView.App> list) {
+        list.add(new ModernHomeView.App("القرآن الكريم", "quran", null, "builtin:quran", () -> selectTab(TAB_QURAN, false)));
+        list.add(new ModernHomeView.App("الحرم مباشر", "haram", null, "builtin:haram", this::openHaramLive));
+        list.add(new ModernHomeView.App("الخلفيات", "gallery", null, "builtin:gallery", () -> selectTab(TAB_GALLERY, false)));
+    }
+
     private static boolean isRemovedTab(int tab) {
         return tab == TAB_TV || tab == TAB_GAMES || tab == TAB_SAVED;
     }
 
     private int tabTextColor(boolean selected) {
-        boolean light = LiquidTheme.isLight(this);
+        boolean light = LiquidTheme.isLight(this) || (preferences != null && ModernTheme.modern(preferences) && ModernTheme.day(preferences));
         return selected ? (light ? 0xFF1E2A2A : 0xFFF4EFE6) : (light ? 0x9924403D : 0x8CFFFFFF);
     }
 
@@ -1720,8 +1866,12 @@ public final class MainActivity extends Activity {
         tabRow.removeAllViews();
         ArrayList<Integer> visible = new ArrayList<>();
         visible.add(TAB_HOME);
-        visible.add(TAB_PRAYER);
-        for (int tab : navigationOrder()) if (!isNavigationHidden(tab)) visible.add(tab);
+        if (ModernTheme.modern(preferences)) {
+            for (String key : ModernTheme.tabs(preferences)) visible.add(tabForKey(key));
+        } else {
+            visible.add(TAB_PRAYER);
+            for (int tab : navigationOrder()) if (!isNavigationHidden(tab)) visible.add(tab);
+        }
         // Right-to-left: the first tab sits at the right end of the bar.
         for (int i = visible.size() - 1; i >= 0; i--)
             tabRow.addView(tabButtons[visible.get(i)], new LinearLayout.LayoutParams(-2, dp(32)));
@@ -2709,6 +2859,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
     }
 
     private void renderWeather() {
+        if (modernHome != null && ModernTheme.modern(preferences)) modernHome.setWeather(weatherForecast);
         if (weatherPanel == null) return;
         boolean light = LiquidTheme.isLight(this);
         if (weatherForecast == null) {
@@ -2994,6 +3145,11 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             homeCalendarSubtitle.setText(preferences.getString("publicCalendarUrl", "").isEmpty()
                     ? ArabicFormat.hijri(today) : ArabicFormat.hijri(today));
         }
+        if (modernHome != null && ModernTheme.modern(preferences)) {
+            modernHome.setOccasion(todayEvent != null ? "مناسبة اليوم" : "المناسبة القادمة",
+                    todayEvent != null || nextEvent != null ? homeCalendarTitle.getText().toString() : "",
+                    todayEvent != null || nextEvent != null ? homeCalendarSubtitle.getText().toString() : "");
+        }
     }
 
     private String wrapHomeCalendarTitle(String value) {
@@ -3252,6 +3408,7 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
                 if (destination != null) destination.requestFocus();
             });
         }
+        showModernApps(all, selected);
         if (selected.isEmpty()) {
             TextView empty = label("لا توجد تطبيقات مختارة", 15, MUTED, false);
             empty.setGravity(Gravity.CENTER_VERTICAL);
@@ -6597,6 +6754,17 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
             canvas.translate(bounds.left, bounds.top);
             canvas.scale(bounds.width() / 24f, bounds.height() / 24f);
             paint.setColor(glyphColor);
+            String modern = modernGlyphs && kind == TAB_PRAYER ? "dome" : kind == TAB_GALLERY ? "gallery" : kind == TAB_HARAM ? "haram" : null;
+            if (modern != null) {
+                paint.setStyle(Paint.Style.STROKE);
+                float stroke = paint.getStrokeWidth();
+                if (!"dome".equals(modern)) { canvas.scale(24f / 40f, 24f / 40f); paint.setStrokeWidth(2.4f); }
+                else paint.setStrokeWidth(1.7f);
+                ModernIcons.drawKind(canvas, modern, paint);
+                paint.setStrokeWidth(stroke);
+                canvas.restoreToCount(save);
+                return;
+            }
             if (!strokePath.isEmpty()) {
                 paint.setStyle(Paint.Style.STROKE);
                 canvas.drawPath(strokePath, paint);

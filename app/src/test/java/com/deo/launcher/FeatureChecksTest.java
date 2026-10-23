@@ -146,6 +146,55 @@ public final class FeatureChecksTest {
         }
     }
 
+    @Test public void galleryCategoriesHaveFourKPictures() throws Exception {
+        for (String key : new String[]{"nature", "drawn", "aerial", "space", "aviation"}) {
+            File[] pictures = new File("src/main/assets/gallery/" + key).listFiles((dir, name) -> name.endsWith(".jpg"));
+            assertNotNull(key, pictures);
+            assertTrue(key + " is empty", pictures.length >= 2);
+            for (File picture : pictures) {
+                int[] size = jpegSize(java.nio.file.Files.readAllBytes(picture.toPath()));
+                assertEquals(picture.getName(), 3840, size[0]);
+                assertEquals(picture.getName(), 2160, size[1]);
+            }
+        }
+        assertEquals(GalleryView.CATEGORY_KEYS.length, GalleryView.CATEGORY_NAMES.length);
+    }
+
+    @Test public void themeContentIsCompleteAndChangesDaily() {
+        assertEquals(ModernTheme.FONT_KEYS.length, ModernTheme.FONT_NAMES.length);
+        assertEquals(ModernTheme.CARD_KEYS.length, ModernTheme.CARD_NAMES.length);
+        assertEquals(ModernTheme.TAB_KEYS.length, ModernTheme.TAB_NAMES.length);
+        for (String[] line : ModernTheme.POETRY) {
+            assertEquals(3, line.length);
+            for (String part : line) assertFalse(part.trim().isEmpty());
+        }
+        java.util.HashSet<String> seen = new java.util.HashSet<>();
+        for (int i = 0; i < 30; i++) seen.add(ModernTheme.wisdomFor(LocalDate.of(2026, 10, 1).plusDays(i)));
+        assertTrue(seen.size() >= 10);
+        assertNotNull(ModernTheme.poetryFor(LocalDate.of(1990, 1, 1)));
+    }
+
+    @Test public void bundledFontsAreOpenLicensedAndCoverTheText() throws Exception {
+        for (String name : new String[]{"tajawal-300", "tajawal-400", "tajawal-500", "harmattan-400", "harmattan-500",
+                "jomhuria-400", "aref-ruqaa-400", "aref-ruqaa-700"}) {
+            assertTrue(name, new File("src/main/assets/fonts/" + name + ".ttf").isFile());
+        }
+        for (String family : new String[]{"tajawal", "harmattan", "jomhuria", "aref-ruqaa"}) {
+            String license = new String(java.nio.file.Files.readAllBytes(
+                    new File("src/main/assets/fonts/OFL-" + family + ".txt").toPath()), java.nio.charset.StandardCharsets.UTF_8);
+            assertTrue(family, license.contains("SIL Open Font License"));
+        }
+    }
+
+    @Test public void weatherIconsCoverEveryCode() {
+        assertEquals("sun", ModernIcons.weatherKind(0, true));
+        assertEquals("moon", ModernIcons.weatherKind(0, false));
+        assertEquals("rain", ModernIcons.weatherKind(61, true));
+        assertEquals("storm", ModernIcons.weatherKind(95, true));
+        assertEquals("fog", ModernIcons.weatherKind(45, true));
+        assertEquals("cloud", ModernIcons.weatherKind(73, true));
+    }
+
     /** Width and height from a JPEG's start-of-frame marker. */
     private static int[] jpegSize(byte[] data) {
         int i = 2;

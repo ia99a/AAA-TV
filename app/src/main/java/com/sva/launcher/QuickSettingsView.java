@@ -16,8 +16,9 @@ import java.util.List;
 
 /**
  * A small Arabic settings panel opened with the remote's Menu key (or a long press on «آمر»):
- * background mood, calm colour, weather city, the home apps and their order, and the full settings.
- * Up/Down move, OK or Left/Right change a value, Back closes.
+ * the home theme («بسيط ١» / «بسيط ٢») and, for «بسيط ٢», day/night, font, cards and bar tabs;
+ * background, weather city, home apps, always-on-screen and the wallpapers screen.
+ * Up/Down move, OK or Left/Right change a value, Back closes (or returns from a list page).
  */
 final class QuickSettingsView extends FrameLayout {
     interface Listener {
@@ -32,11 +33,16 @@ final class QuickSettingsView extends FrameLayout {
         void onHomeAppsChanged(List<String> packages);
         void onKioskChanged(boolean enabled);
         void onGalleryIntervalChanged(int minutes);
+        /** Theme, day/night, font, cards or tabs changed. */
+        void onHomeThemeChanged();
+        void onGalleryCategoryChanged();
     }
 
     static final String PREF_WEATHER_CITY = "weatherCityKey";
     private static final int INK = 0xFFF1ECE2, SOFT = 0x99F1ECE2, GOLD = 0xFFE3B469;
-    private static final int MOOD = 0, COLOUR = 1, WEATHER = 2, APPS = 3, KIOSK = 4, GALLERY = 5;
+    private static final int THEME = 0, MODE = 1, FONT = 2, MOOD = 3, COLOUR = 4, WEATHER = 5, CARDS = 6, APPS = 7,
+            TABS = 8, KIOSK = 9, GALLERY_SET = 10, GALLERY = 11;
+    private static final int PAGE_MAIN = 0, PAGE_APPS = 1, PAGE_TABS = 2, PAGE_CARDS = 3;
 
     private final SharedPreferences preferences;
     private final Listener listener;
@@ -44,12 +50,15 @@ final class QuickSettingsView extends FrameLayout {
     private final LinearLayout list;
     private final ScrollView scroll;
     private final ArrayList<TextView> rows = new ArrayList<>();
+    /** The setting behind each row on the main page. */
+    private final ArrayList<Integer> rowIds = new ArrayList<>();
     private int selected;
     /** Ignore key releases that belong to the press which opened the panel. */
     private boolean armed;
-    private boolean appsPage;
-    private final ArrayList<String[]> apps = new ArrayList<>();
-    private final ArrayList<String> home = new ArrayList<>();
+    private int page = PAGE_MAIN;
+    /** List pages: {key, label} for every entry, and the shown keys in order. */
+    private final ArrayList<String[]> entries = new ArrayList<>();
+    private final ArrayList<String> shown = new ArrayList<>();
 
     QuickSettingsView(Context context, SharedPreferences preferences, Listener listener) {
         super(context);
@@ -65,6 +74,7 @@ final class QuickSettingsView extends FrameLayout {
         GradientDrawable shape = new GradientDrawable();
         shape.setColor(0xF51B2024);
         shape.setCornerRadius(dp(18));
+        shape.setStroke(dp(1), 0x22FFFFFF);
         panel.setBackground(shape);
         title = text(context, 15, GOLD);
         panel.addView(title, new LinearLayout.LayoutParams(-1, -2));
@@ -80,13 +90,13 @@ final class QuickSettingsView extends FrameLayout {
         LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(-1, -2);
         hintParams.topMargin = dp(10);
         panel.addView(hint, hintParams);
-        addView(panel, new LayoutParams(dp(440), -2, Gravity.CENTER));
+        addView(panel, new LayoutParams(dp(460), -2, Gravity.CENTER));
     }
 
     boolean isOpen() { return getVisibility() == VISIBLE; }
 
     void open() {
-        appsPage = false;
+        page = PAGE_MAIN;
         selected = 0;
         armed = false;
         buildMain();
@@ -106,8 +116,13 @@ final class QuickSettingsView extends FrameLayout {
         boolean ok = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER;
         if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_MENU || code == KeyEvent.KEYCODE_SETTINGS) {
             if (!down) {
-                if (appsPage) { appsPage = false; selected = APPS; buildMain(); }
-                else close();
+                if (page != PAGE_MAIN) {
+                    int back = page == PAGE_APPS ? APPS : page == PAGE_TABS ? TABS : CARDS;
+                    page = PAGE_MAIN;
+                    buildMain();
+                    selected = Math.max(0, rowIds.indexOf(back));
+                    paint();
+                } else close();
             }
             return true;
         }
@@ -115,29 +130,30 @@ final class QuickSettingsView extends FrameLayout {
             if (down) move(code == KeyEvent.KEYCODE_DPAD_DOWN ? 1 : -1);
             return true;
         }
-        if (appsPage) return handleAppsKey(code, down, ok);
+        if (page != PAGE_MAIN) return handleListKey(code, down, ok);
+        int id = rows.isEmpty() ? -1 : rowIds.get(selected);
         if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
-            if (down && selected != APPS) change(code == KeyEvent.KEYCODE_DPAD_LEFT ? 1 : -1);
+            if (down && !isPage(id)) change(id, code == KeyEvent.KEYCODE_DPAD_LEFT ? 1 : -1);
             return true;
         }
         if (ok) {
             if (!down) {
-                if (selected == APPS) openApps();
-                else change(1);
+                if (id == APPS) openList(PAGE_APPS);
+                else if (id == TABS) openList(PAGE_TABS);
+                else if (id == CARDS) openList(PAGE_CARDS);
+                else change(id, 1);
             }
             return true;
         }
         return true; // Nothing behind the panel reacts while it is open.
     }
 
+    private static boolean isPage(int id) { return id == APPS || id == TABS || id == CARDS; }
+
     private void move(int delta) {
         int count = rows.size();
-        int next = selected;
-        for (int i = 0; i < count; i++) {
-            next = Math.max(0, Math.min(count - 1, next + delta));
-            if (rows.get(next).getVisibility() == VISIBLE) break;
-        }
-        selected = next;
+        if (count == 0) return;
+        selected = Math.max(0, Math.min(count - 1, selected + delta));
         paint();
     }
 
@@ -148,113 +164,193 @@ final class QuickSettingsView extends FrameLayout {
         hint.setText("فوق/تحت للتنقل  ·  OK أو يمين/يسار للتغيير  ·  رجوع للإغلاق");
         list.removeAllViews();
         rows.clear();
-        for (int i = 0; i <= GALLERY; i++) addRow();
+        rowIds.clear();
+        boolean modern = ModernTheme.modern(preferences);
+        addMain(THEME);
+        if (modern) { addMain(MODE); addMain(FONT); }
+        addMain(MOOD);
+        if (calm()) addMain(COLOUR);
+        addMain(WEATHER);
+        if (modern) addMain(CARDS);
+        addMain(APPS);
+        if (modern) addMain(TABS);
+        addMain(KIOSK);
+        addMain(GALLERY_SET);
+        addMain(GALLERY);
+        selected = Math.max(0, Math.min(rows.size() - 1, selected));
         refreshMain();
     }
 
+    private void addMain(int id) { addRow(); rowIds.add(id); }
+
     /** Right-to-left: Left moves forward through the values, Right goes back. */
-    private void change(int delta) {
-        if (selected == MOOD) {
+    private void change(int id, int delta) {
+        boolean rebuild = false;
+        if (id == THEME) {
+            int theme = ModernTheme.theme(preferences) == ModernTheme.SIMPLE_1 ? ModernTheme.SIMPLE_2 : ModernTheme.SIMPLE_1;
+            preferences.edit().putInt(ModernTheme.PREF_THEME, theme).apply();
+            listener.onHomeThemeChanged();
+            rebuild = true;
+        } else if (id == MODE) {
+            preferences.edit().putString(ModernTheme.PREF_MODE, ModernTheme.day(preferences) ? "night" : "day").apply();
+            listener.onHomeThemeChanged();
+        } else if (id == FONT) {
+            String current = ModernTheme.font(preferences);
+            int index = 0;
+            for (int i = 0; i < ModernTheme.FONT_KEYS.length; i++) if (ModernTheme.FONT_KEYS[i].equals(current)) index = i;
+            String next = ModernTheme.FONT_KEYS[Math.floorMod(index + delta, ModernTheme.FONT_KEYS.length)];
+            preferences.edit().putString(ModernTheme.PREF_FONT, next).apply();
+            listener.onHomeThemeChanged();
+        } else if (id == MOOD) {
             int index = Math.floorMod(WallpaperMoods.index(WallpaperMoods.current(preferences)) + delta, WallpaperMoods.KEYS.length);
             String mood = WallpaperMoods.KEYS[index];
             preferences.edit().putString(WallpaperMoods.PREF, mood).apply();
             listener.onMoodChanged(mood);
-        } else if (selected == COLOUR) {
+            rebuild = true; // The colour row appears only for the calm background.
+        } else if (id == COLOUR) {
             int index = Math.floorMod(preferences.getInt(CalmWallpapers.PREF, CalmWallpapers.DEFAULT) + delta, CalmWallpapers.NAMES.length);
             preferences.edit().putInt(CalmWallpapers.PREF, index).apply();
             listener.onCalmColourChanged(index);
-        } else if (selected == WEATHER) {
+        } else if (id == WEATHER) {
             PrayerTimes.City current = PrayerTimes.city(preferences.getString(PREF_WEATHER_CITY, "riyadh"));
             int index = 0;
             for (int i = 0; i < PrayerTimes.CITIES.length; i++) if (PrayerTimes.CITIES[i] == current) index = i;
             PrayerTimes.City next = PrayerTimes.CITIES[Math.floorMod(index + delta, PrayerTimes.CITIES.length)];
             preferences.edit().putString(PREF_WEATHER_CITY, next.key).apply();
             listener.onWeatherCityChanged(next);
-        } else if (selected == GALLERY) {
+        } else if (id == GALLERY_SET) {
+            GalleryView.nextCategory(preferences, delta);
+            listener.onGalleryCategoryChanged();
+        } else if (id == GALLERY) {
             listener.onGalleryIntervalChanged(GalleryView.nextInterval(preferences, delta));
-        } else if (selected == KIOSK) {
+        } else if (id == KIOSK) {
             boolean enabled = !preferences.getBoolean(LauncherOverrideService.KIOSK, true);
             preferences.edit().putBoolean(LauncherOverrideService.KIOSK, enabled).apply();
             listener.onKioskChanged(enabled);
         }
-        refreshMain();
+        if (rebuild) {
+            int keep = id;
+            buildMain();
+            selected = Math.max(0, rowIds.indexOf(keep));
+            paint();
+        } else refreshMain();
     }
 
     private boolean calm() { return WallpaperMoods.CALM.equals(WallpaperMoods.current(preferences)); }
 
     private void refreshMain() {
-        String mood = WallpaperMoods.current(preferences);
-        rows.get(MOOD).setText("‹  الخلفية: " + WallpaperMoods.NAMES[WallpaperMoods.index(mood)] + "  ›");
-        rows.get(COLOUR).setText("‹  لون الهدوء: " + CalmWallpapers.NAMES[preferences.getInt(CalmWallpapers.PREF, CalmWallpapers.DEFAULT)] + "  ›");
-        rows.get(COLOUR).setVisibility(calm() ? VISIBLE : GONE);
-        rows.get(WEATHER).setText("‹  مدينة الطقس: " + PrayerTimes.city(preferences.getString(PREF_WEATHER_CITY, "riyadh")).name + "  ›");
-        rows.get(APPS).setText("تطبيقات الشاشة الرئيسية وترتيبها");
-        rows.get(KIOSK).setText("‹  المشغّل دائم على الشاشة: "
-                + (preferences.getBoolean(LauncherOverrideService.KIOSK, true) ? "يعمل" : "متوقف") + "  ›");
-        int minutes = GalleryView.interval(preferences);
-        rows.get(GALLERY).setText("‹  لوحات «الخلفيات»: " + (minutes == 0 ? "مثبّتة على الصورة الحالية" : "تتبدل " + GalleryView.intervalName(minutes)) + "  ›");
-        if (selected == COLOUR && !calm()) selected = MOOD;
+        for (int i = 0; i < rows.size(); i++) rows.get(i).setText(label(rowIds.get(i)));
         paint();
     }
 
-    // ---- Apps page ----
-
-    private void openApps() {
-        appsPage = true;
-        apps.clear();
-        apps.addAll(listener.installedApps());
-        home.clear();
-        home.addAll(listener.homeApps());
-        selected = 0;
-        title.setText("تطبيقات الشاشة الرئيسية");
-        hint.setText("OK لإظهار التطبيق أو إخفائه  ·  يمين/يسار لتغيير ترتيبه  ·  رجوع للحفظ");
-        buildApps();
+    private String label(int id) {
+        switch (id) {
+            case THEME: return "‹  الثيم: " + ModernTheme.THEME_NAMES[ModernTheme.theme(preferences) - 1] + "  ›";
+            case MODE: return "‹  الوضع: " + (ModernTheme.day(preferences) ? "نهار" : "ليل") + "  ›";
+            case FONT: return "‹  الخط: " + ModernTheme.fontName(ModernTheme.font(preferences)) + "  ›";
+            case MOOD: return "‹  الخلفية: " + WallpaperMoods.NAMES[WallpaperMoods.index(WallpaperMoods.current(preferences))] + "  ›";
+            case COLOUR: return "‹  لون الهدوء: " + CalmWallpapers.NAMES[preferences.getInt(CalmWallpapers.PREF, CalmWallpapers.DEFAULT)] + "  ›";
+            case WEATHER: return "‹  مدينة الطقس: " + PrayerTimes.city(preferences.getString(PREF_WEATHER_CITY, "riyadh")).name + "  ›";
+            case CARDS: return "البطاقات في «آمر»";
+            case APPS: return "تطبيقات الشاشة الرئيسية وترتيبها";
+            case TABS: return "التبويبات وترتيبها";
+            case KIOSK: return "‹  المشغّل دائم على الشاشة: "
+                    + (preferences.getBoolean(LauncherOverrideService.KIOSK, true) ? "يعمل" : "متوقف") + "  ›";
+            case GALLERY_SET: return "‹  تصنيف «الخلفيات»: " + GalleryView.categoryName(preferences) + "  ›";
+            case GALLERY: {
+                int minutes = GalleryView.interval(preferences);
+                return "‹  لوحات «الخلفيات»: " + (minutes == 0 ? "مثبّتة على الصورة الحالية" : "تتبدل " + GalleryView.intervalName(minutes)) + "  ›";
+            }
+            default: return "";
+        }
     }
 
-    /** Shown apps first, in their order, then the rest by name. */
-    private List<String[]> orderedApps() {
+    // ---- List pages: home apps, bar tabs, home cards ----
+
+    private void openList(int which) {
+        page = which;
+        entries.clear();
+        shown.clear();
+        if (which == PAGE_APPS) {
+            entries.addAll(listener.installedApps());
+            shown.addAll(listener.homeApps());
+            title.setText("تطبيقات الشاشة الرئيسية");
+            hint.setText("OK لإظهار التطبيق أو إخفائه  ·  يمين/يسار لتغيير ترتيبه  ·  رجوع للحفظ");
+        } else if (which == PAGE_TABS) {
+            for (String key : ModernTheme.TAB_KEYS) entries.add(new String[]{key, ModernTheme.tabName(key)});
+            shown.addAll(ModernTheme.tabs(preferences));
+            title.setText("التبويبات وترتيبها");
+            hint.setText("«آمر» ثابت أولًا  ·  OK لإظهار التبويب أو إخفائه  ·  يمين/يسار لتغيير ترتيبه  ·  رجوع للحفظ");
+        } else {
+            for (String key : ModernTheme.CARD_KEYS) {
+                entries.add(new String[]{key, ModernTheme.cardName(key)});
+                if (ModernTheme.card(preferences, key)) shown.add(key);
+            }
+            title.setText("البطاقات في «آمر»");
+            hint.setText("OK للإظهار أو الإخفاء  ·  إذا ظهرت الحكمة والشعر معًا يتبادلان كل دقيقة  ·  رجوع للحفظ");
+        }
+        selected = 0;
+        buildList();
+    }
+
+    /** Shown entries first, in their order (cards keep their fixed order), then the rest. */
+    private List<String[]> orderedEntries() {
         ArrayList<String[]> ordered = new ArrayList<>();
-        for (String pkg : home) for (String[] app : apps) if (app[0].equals(pkg)) ordered.add(app);
-        for (String[] app : apps) if (!home.contains(app[0])) ordered.add(app);
+        if (page == PAGE_CARDS) { ordered.addAll(entries); return ordered; }
+        for (String key : shown) for (String[] entry : entries) if (entry[0].equals(key)) ordered.add(entry);
+        for (String[] entry : entries) if (!shown.contains(entry[0])) ordered.add(entry);
         return ordered;
     }
 
-    private void buildApps() {
+    private void buildList() {
         list.removeAllViews();
         rows.clear();
-        List<String[]> ordered = orderedApps();
-        for (String[] app : ordered) {
+        rowIds.clear();
+        for (String[] entry : orderedEntries()) {
             TextView row = addRow();
-            int position = home.indexOf(app[0]);
-            row.setText(position >= 0 ? "✓  " + ArabicFormat.digits(position + 1) + ".  " + app[1] : "      " + app[1]);
-            row.setTag(app[0]);
+            int position = shown.indexOf(entry[0]);
+            if (page == PAGE_CARDS) row.setText((position >= 0 ? "✓  " : "      ") + entry[1] + (position >= 0 ? "   ·   ظاهر" : "   ·   مخفي"));
+            else row.setText(position >= 0 ? "✓  " + ArabicFormat.digits(position + 1) + ".  " + entry[1] : "      " + entry[1] + "   ·   مخفي");
+            row.setTag(entry[0]);
         }
         selected = Math.max(0, Math.min(rows.size() - 1, selected));
         paint();
     }
 
-    private boolean handleAppsKey(int code, boolean down, boolean ok) {
+    private void saveList() {
+        if (page == PAGE_APPS) {
+            listener.onHomeAppsChanged(new ArrayList<>(shown));
+            return;
+        }
+        SharedPreferences.Editor editor = preferences.edit();
+        if (page == PAGE_TABS) editor.putString(ModernTheme.PREF_TABS, String.join(",", shown));
+        else for (String key : ModernTheme.CARD_KEYS) editor.putBoolean(ModernTheme.CARD_PREFIX + key, shown.contains(key));
+        editor.apply();
+        listener.onHomeThemeChanged();
+    }
+
+    private boolean handleListKey(int code, boolean down, boolean ok) {
         if (rows.isEmpty()) return true;
-        String pkg = (String) rows.get(selected).getTag();
+        String key = (String) rows.get(selected).getTag();
         if (ok) {
             if (!down) {
-                if (home.contains(pkg)) home.remove(pkg); else home.add(pkg);
-                listener.onHomeAppsChanged(new ArrayList<>(home));
-                buildApps();
+                if (shown.contains(key)) shown.remove(key); else shown.add(key);
+                saveList();
+                buildList();
             }
             return true;
         }
-        if (code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) {
-            int index = home.indexOf(pkg);
+        if ((code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT) && page != PAGE_CARDS) {
+            int index = shown.indexOf(key);
             if (down && index >= 0) {
-                // Right to left: Left moves the app later in the row, Right earlier.
-                int target = Math.max(0, Math.min(home.size() - 1, index + (code == KeyEvent.KEYCODE_DPAD_LEFT ? 1 : -1)));
+                // Right to left: Left moves the entry later, Right earlier.
+                int target = Math.max(0, Math.min(shown.size() - 1, index + (code == KeyEvent.KEYCODE_DPAD_LEFT ? 1 : -1)));
                 if (target != index) {
-                    home.remove(index);
-                    home.add(target, pkg);
+                    shown.remove(index);
+                    shown.add(target, key);
                     selected = target;
-                    listener.onHomeAppsChanged(new ArrayList<>(home));
-                    buildApps();
+                    saveList();
+                    buildList();
                 }
             }
             return true;
@@ -269,7 +365,7 @@ final class QuickSettingsView extends FrameLayout {
         row.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
         row.setPadding(dp(14), 0, dp(14), 0);
         row.setSingleLine(true);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(42));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(40));
         params.topMargin = dp(4);
         list.addView(row, params);
         rows.add(row);
@@ -282,14 +378,14 @@ final class QuickSettingsView extends FrameLayout {
             GradientDrawable shape = new GradientDrawable();
             shape.setCornerRadius(dp(10));
             shape.setColor(on ? 0x1FFFFFFF : Color.TRANSPARENT);
-            if (on) shape.setStroke(dp(1), 0x66E3B469);
+            if (on) shape.setStroke(dp(1), 0x8CE3B469);
             rows.get(i).setBackground(shape);
             rows.get(i).setTextColor(on ? INK : SOFT);
         }
         // Keep the list no taller than most of the screen, and the selected row in view.
-        int max = (int) (getResources().getDisplayMetrics().heightPixels * 0.6f);
+        int max = (int) (getResources().getDisplayMetrics().heightPixels * 0.66f);
         LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) scroll.getLayoutParams();
-        int wanted = rows.size() * dp(46);
+        int wanted = rows.size() * dp(44);
         int height = Math.min(max, wanted);
         if (params.height != height) { params.height = height; scroll.setLayoutParams(params); }
         if (!rows.isEmpty()) {

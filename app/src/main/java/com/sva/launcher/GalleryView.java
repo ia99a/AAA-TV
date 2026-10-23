@@ -32,7 +32,10 @@ final class GalleryView extends FrameLayout {
     static final String PREF_INTERVAL = "galleryInterval";
     static final int[] INTERVALS = {1, 5, 15, 30, 60, 0};
     static final int DEFAULT_INTERVAL = 1;
-    private static final String FOLDER = "frames";
+    static final String PREF_CATEGORY = "galleryCategory";
+    /** Categories: the framed paintings, then the photo and drawing collections under assets/gallery. */
+    static final String[] CATEGORY_KEYS = {"frames", "nature", "drawn", "aerial", "space", "aviation", "all"};
+    static final String[] CATEGORY_NAMES = {"لوحات", "طبيعة", "رسومات", "من الأعلى", "فضاء وغروب", "طيران", "الكل"};
     private static final long FADE_MS = 2_000L;
 
     private final SharedPreferences preferences;
@@ -70,13 +73,7 @@ final class GalleryView extends FrameLayout {
         LayoutParams labelParams = new LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         labelParams.setMargins(0, 0, 0, dp(28));
         addView(label, labelParams);
-        try {
-            String[] names = context.getAssets().list(FOLDER);
-            if (names != null) {
-                Arrays.sort(names);
-                for (String name : names) if (name.endsWith(".jpg")) pictures.add(FOLDER + "/" + name);
-            }
-        } catch (Exception ignored) { }
+        loadPictures();
         index = Math.max(0, preferences.getInt(PREF_INDEX, 0));
     }
 
@@ -119,7 +116,8 @@ final class GalleryView extends FrameLayout {
                 return true;
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
-                if (!down) flashLabel();
+                // OK moves to the next category.
+                if (!down) { nextCategory(preferences, 1); categoryChanged(); }
                 return true;
             default:
                 return false;
@@ -170,6 +168,48 @@ final class GalleryView extends FrameLayout {
         }
     }
 
+    static int category(SharedPreferences preferences) {
+        String key = preferences.getString(PREF_CATEGORY, "frames");
+        for (int i = 0; i < CATEGORY_KEYS.length; i++) if (CATEGORY_KEYS[i].equals(key)) return i;
+        return 0;
+    }
+
+    static String categoryName(SharedPreferences preferences) { return CATEGORY_NAMES[category(preferences)]; }
+
+    static void nextCategory(SharedPreferences preferences, int delta) {
+        int next = Math.floorMod(category(preferences) + delta, CATEGORY_KEYS.length);
+        preferences.edit().putString(PREF_CATEGORY, CATEGORY_KEYS[next]).putInt(PREF_INDEX, 0).apply();
+    }
+
+    /** Asset paths of the pictures in a category, in a stable order. */
+    static List<String> picturesIn(android.content.res.AssetManager assets, String key) {
+        ArrayList<String> result = new ArrayList<>();
+        String[] folders = "all".equals(key)
+                ? new String[]{"frames", "gallery/nature", "gallery/drawn", "gallery/aerial", "gallery/space", "gallery/aviation"}
+                : new String[]{"frames".equals(key) ? "frames" : "gallery/" + key};
+        for (String folder : folders) {
+            try {
+                String[] names = assets.list(folder);
+                if (names == null) continue;
+                Arrays.sort(names);
+                for (String name : names) if (name.endsWith(".jpg")) result.add(folder + "/" + name);
+            } catch (Exception ignored) { }
+        }
+        return result;
+    }
+
+    private void loadPictures() {
+        pictures.clear();
+        pictures.addAll(picturesIn(getContext().getAssets(), CATEGORY_KEYS[category(preferences)]));
+    }
+
+    /** Re-reads the category, for example after it was changed from the quick settings. */
+    void categoryChanged() {
+        loadPictures();
+        index = 0;
+        if (running) { show(0); flashLabel(); }
+    }
+
     static int interval(SharedPreferences preferences) {
         int minutes = preferences.getInt(PREF_INTERVAL, DEFAULT_INTERVAL);
         for (int value : INTERVALS) if (value == minutes) return minutes;
@@ -212,10 +252,10 @@ final class GalleryView extends FrameLayout {
     private void flashLabel() {
         if (pictures.isEmpty()) return;
         int minutes = interval(preferences);
-        label.setText(ArabicFormat.digits(String.valueOf(index + 1)) + " / "
+        label.setText(categoryName(preferences) + "   ·   " + ArabicFormat.digits(String.valueOf(index + 1)) + " / "
                 + ArabicFormat.digits(String.valueOf(pictures.size()))
                 + "   ·   " + (minutes == 0 ? "الصورة مثبّتة" : "التبديل " + intervalName(minutes))
-                + "   ·   يمين/يسار: الصورة   فوق/تحت: المدة");
+                + "   ·   يمين/يسار: الصورة   فوق/تحت: المدة   OK: التصنيف");
         label.animate().cancel();
         label.setAlpha(1f);
         label.animate().alpha(0f).setStartDelay(4000).setDuration(800).start();
