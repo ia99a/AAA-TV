@@ -253,7 +253,7 @@ final class PrayerView extends FrameLayout {
             TextView view = (TextView) entry[0];
             if (view == verseText) continue;
             float sp = (Float) entry[1];
-            if (glass && view == time) sp = 58;
+            if (glass && view == time) sp = 54;
             if (glass) {
                 // Big numbers keep to the card; small labels get a little larger to read from the sofa.
                 float factor = sp >= 30 ? Math.min(scale, 1.12f) : scale * (sp < 15 ? 1.12f : 1f);
@@ -295,8 +295,7 @@ final class PrayerView extends FrameLayout {
             content.addView(verseCard, 1, verseParams);
         }
         // Glass: the cards grow with the font so no line (like the iqama time) is ever cut off.
-        top.setLayoutParams(new LinearLayout.LayoutParams(-1, glass ? -2 : 0, glass ? 0 : 1));
-        top.setMinimumHeight(glass ? dp(220) : 0);
+        top.setLayoutParams(new LinearLayout.LayoutParams(-1, glass ? dp(266) : 0, glass ? 0 : 1));
         top.setGravity(glass ? Gravity.FILL_VERTICAL : Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams clockParams = new LinearLayout.LayoutParams(0, glass ? -1 : -2, glass ? 1f : 1.25f);
         clockCard.setLayoutParams(clockParams);
@@ -316,7 +315,10 @@ final class PrayerView extends FrameLayout {
         verseCard.setPadding(0, 0, 0, 0);
         // The verse is a little smaller so the left card holds the clock and the verse.
         verseText.setTextSize(TypedValue.COMPLEX_UNIT_SP, glass ? 17 : 22);
-        verseText.setMaxLines(2);
+        verseText.setMaxLines(glass ? 1 : 2);
+        verseRef.setVisibility(glass ? GONE : VISIBLE);
+        cachedDay = null;
+        update();
         // Full width inside the card so a long verse wraps instead of disappearing.
         LinearLayout.LayoutParams verseTextParams = (LinearLayout.LayoutParams) verseText.getLayoutParams();
         verseTextParams.width = glass ? -1 : -2;
@@ -424,7 +426,8 @@ final class PrayerView extends FrameLayout {
             ramadan.setText(ramadanText);
             ramadan.setVisibility(ramadanText.isEmpty() ? GONE : VISIBLE);
             String[] verse = DailyVerses.forEpochDay(day.toEpochDay());
-            verseTheme.setText("آية اليوم · " + verse[0]);
+            // Glass hides the separate reference line, so the surah joins the heading.
+            verseTheme.setText("آية اليوم · " + verse[0] + (glass ? "  ·  سورة " + verse[2] : ""));
             verseText.setText("﴿ " + verse[1] + " ﴾");
             verseRef.setText("سورة " + verse[2]);
             cityButton.setText(city.name);
