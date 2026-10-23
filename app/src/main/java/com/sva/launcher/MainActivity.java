@@ -2282,7 +2282,7 @@ public final class MainActivity extends Activity {
         int reserved = ModernTheme.modern(preferences) ? Math.round(205 + 26 * getResources().getDisplayMetrics().widthPixels
                 / 960f / getResources().getDisplayMetrics().density) : 205;
         int fittedHeight = (Math.max(300, screenHeightDp - reserved) - 34) / rows - 7;
-        int cellHeight = Math.max(58, Math.min(94, Math.min(cellWidth, fittedHeight)));
+        int cellHeight = Math.max(ModernTheme.modern(preferences) ? 46 : 58, Math.min(94, Math.min(cellWidth, fittedHeight)));
         for (int visual = 0; visual < cells; visual++) {
             int i = (visual / 7) * 7 + (6 - visual % 7);
             int dayNumber = i - offset + 1;

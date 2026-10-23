@@ -263,7 +263,7 @@ final class QuranView extends FrameLayout {
             canvas.drawCircle(cx, cy, r, paint);
             paint.setAlpha(255);
             // The dome over the Quran stand, from the app's own icon artwork, in gold inside the ring.
-            float side = r * 1.12f;
+            float side = r * 1.38f;
             canvas.save();
             canvas.translate(cx - side / 2f, cy - side / 2f + r * 0.02f);
             canvas.scale(side / 40f, side / 40f);
