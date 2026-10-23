@@ -237,17 +237,17 @@ final class ModernHomeView extends FrameLayout {
         LinearLayout side = column(Gravity.LEFT);
         TextView city = text(8, soft, 400); city.setGravity(Gravity.LEFT); city.setText(forecast.location);
         // Today's high and low, then humidity and wind on one line.
-        TextView range = text(8, ink, 400); range.setGravity(Gravity.LEFT);
+        TextView todayRange = text(8, ink, 400); todayRange.setGravity(Gravity.LEFT);
         String todayIso = LocalDate.now().toString();
         if (!forecast.days.isEmpty() && todayIso.equals(forecast.days.get(0).date)) {
             WeatherRepository.Day today = forecast.days.get(0);
-            range.setText("العظمى " + ArabicFormat.digits(Math.round(today.high)) + "°   الصغرى "
+            todayRange.setText("العظمى " + ArabicFormat.digits(Math.round(today.high)) + "°   الصغرى "
                     + ArabicFormat.digits(Math.round(today.low)) + "°");
         }
         TextView air = text(8, soft, 400); air.setGravity(Gravity.LEFT);
         air.setText((forecast.humidity >= 0 ? "الرطوبة " + ArabicFormat.digits(forecast.humidity) + "٪  ·  " : "")
                 + "الرياح " + ArabicFormat.digits(Math.round(forecast.windSpeed)) + " كم/س");
-        side.addView(city); addGap(side, 2); side.addView(range); addGap(side, 2); side.addView(air);
+        side.addView(city); addGap(side, 2); side.addView(todayRange); addGap(side, 2); side.addView(air);
         top.addView(side, new LinearLayout.LayoutParams(0, -2, 1));
         LinearLayout temp = column(Gravity.RIGHT);
         TextView value = text(25.6f, ink, 300);
