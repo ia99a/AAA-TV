@@ -55,12 +55,13 @@ jobs:
       - name: Draw review screenshots
         continue-on-error: true
         run: ./gradlew --no-daemon testReleaseUnitTest --tests 'com.sva.launcher.ScreenshotPreview' -Pscreens=true
-      - name: Keep the screenshots
-        if: always()
+      - name: Publish the screenshots for review
         continue-on-error: true
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: screens
-          path: app/build/screens
-          if-no-files-found: warn
-          retention-days: 7
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -la app/build/screens || true
+          ls app/build/test-results/testReleaseUnitTest/*ScreenshotPreview* 2>/dev/null && grep -h -A3 "<failure" app/build/test-results/testReleaseUnitTest/*ScreenshotPreview*.xml | head -40 || true
+          gh release delete review-screens --yes --cleanup-tag || true
+          gh release create review-screens app/build/screens/*.png --target "$GITHUB_SHA" \
+            --title "Review screens" --notes "Drawn from ${GITHUB_SHA::7}" --prerelease
