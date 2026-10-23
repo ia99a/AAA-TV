@@ -115,10 +115,11 @@ final class WeatherRepository {
         JSONArray dates = daily.getJSONArray("time"), codes = daily.getJSONArray("weather_code");
         JSONArray highs = daily.getJSONArray("temperature_2m_max"), lows = daily.getJSONArray("temperature_2m_min");
         JSONArray rain = daily.optJSONArray("precipitation_probability_max");
-        int count = Math.min(4, Math.min(Math.min(dates.length(), codes.length()), Math.min(highs.length(), lows.length())));
+        // Today first (its high and low show on the home card), then the next days: five in all.
+        int count = Math.min(5, Math.min(Math.min(dates.length(), codes.length()), Math.min(highs.length(), lows.length())));
         if (count < 2) throw new IllegalArgumentException("Forecast did not include upcoming days.");
         ArrayList<Day> days = new ArrayList<>();
-        for (int i = 1; i < count; i++) days.add(new Day(dates.getString(i), codes.getInt(i),
+        for (int i = 0; i < count; i++) days.add(new Day(dates.getString(i), codes.getInt(i),
                 lows.getDouble(i), highs.getDouble(i), rain == null ? 0 : rain.optInt(i, 0)));
         Forecast forecast = new Forecast(label, now, current.getDouble("temperature_2m"),
                 current.optDouble("apparent_temperature", current.getDouble("temperature_2m")),

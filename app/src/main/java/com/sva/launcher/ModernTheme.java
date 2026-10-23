@@ -142,7 +142,20 @@ final class ModernTheme {
     }
 
     /** Jomhuria is drawn small for its size, so its text is enlarged to read like the others. */
-    static float scale(String key) { return "jomhuria".equals(key) ? 1.45f : "harmattan".equals(key) ? 1.08f : 1f; }
+    static float scale(String key) {
+        return "jomhuria".equals(key) ? 1.45f : "harmattan".equals(key) ? 1.08f : "ruqaa".equals(key) ? 0.88f : 1f;
+    }
+
+    /**
+     * Empty space above and below the letters, as a fraction of the text size, that some fonts reserve
+     * (measured on the home screen's text). Trimming it keeps every font inside the same card sizes.
+     */
+    static float[] trim(String key) {
+        if ("harmattan".equals(key)) return new float[]{0.30f, 0.27f};
+        if ("jomhuria".equals(key)) return new float[]{0.02f, 0.15f};
+        if ("ruqaa".equals(key)) return new float[]{0f, 0f};
+        return new float[]{0f, 0f};
+    }
 
     // ---- Daily wisdom and poetry ----
 

@@ -51,7 +51,7 @@ final class PrayerView extends FrameLayout {
     private final LinearLayout[] columns = new LinearLayout[6];
     /** «بسيط ٢»: glass cards over the background instead of the plain dark page. */
     private boolean glass;
-    private final LinearLayout clockCard, nextCard, verseCard, band;
+    private final LinearLayout clockCard, nextCard, verseCard, band, top;
     private final View topDivider, bandRule;
     private int nextColumn = -1;
     private final TextView[] columnName = new TextView[6], columnTime = new TextView[6], columnIqama = new TextView[6];
@@ -87,7 +87,7 @@ final class PrayerView extends FrameLayout {
         addView(content, new LayoutParams(-1, -1));
 
         // Top: clock (start = right in RTL) and the next prayer.
-        LinearLayout top = new LinearLayout(context);
+        top = new LinearLayout(context);
         top.setOrientation(LinearLayout.HORIZONTAL);
         top.setGravity(Gravity.CENTER_VERTICAL);
         content.addView(top, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -242,23 +242,56 @@ final class PrayerView extends FrameLayout {
         if (glass == value) return;
         glass = value;
         setBackgroundColor(glass ? Color.TRANSPARENT : BG);
-        topDivider.setVisibility(glass ? INVISIBLE : VISIBLE);
-        bandRule.setVisibility(glass ? INVISIBLE : VISIBLE);
-        int pad = glass ? dp(22) : 0;
-        for (LinearLayout card : new LinearLayout[]{clockCard, nextCard, verseCard}) {
-            card.setBackground(glass ? glassCard(false) : null);
-            card.setPadding(pad, glass ? dp(16) : 0, pad, glass ? dp(16) : 0);
+        // «بسيط ٢» follows the approved layout: two equal cards on top (next prayer on the right, the
+        // clock with today's verse on the left), then six equal prayer cards, all centred on the page.
+        content.setGravity(glass ? Gravity.CENTER_VERTICAL : Gravity.NO_GRAVITY);
+        content.setPadding(dp(glass ? 40 : 56), dp(glass ? 16 : 20), dp(glass ? 40 : 56), dp(14));
+        content.removeView(verseCard);
+        if (glass) {
+            LinearLayout.LayoutParams verseParams = new LinearLayout.LayoutParams(-1, -2);
+            verseParams.topMargin = dp(14);
+            clockCard.addView(verseCard, verseParams);
+        } else {
+            clockCard.removeView(verseCard);
+            LinearLayout.LayoutParams verseParams = new LinearLayout.LayoutParams(-1, -2);
+            verseParams.topMargin = dp(10);
+            content.addView(verseCard, 1, verseParams);
         }
-        // Cards sit side by side: a gap between them, and the band's columns become small cards.
-        LinearLayout.LayoutParams clockParams = (LinearLayout.LayoutParams) clockCard.getLayoutParams();
-        clockParams.setMargins(0, 0, 0, 0);
+        top.setLayoutParams(new LinearLayout.LayoutParams(-1, glass ? dp(236) : 0, glass ? 0 : 1));
+        top.setGravity(glass ? Gravity.FILL_VERTICAL : Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams clockParams = new LinearLayout.LayoutParams(0, glass ? -1 : -2, glass ? 1f : 1.25f);
         clockCard.setLayoutParams(clockParams);
+        LinearLayout.LayoutParams nextParams = new LinearLayout.LayoutParams(0, glass ? -1 : -2, 1f);
+        nextCard.setLayoutParams(nextParams);
+        LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(dp(glass ? 14 : 1), dp(120));
+        dividerParams.setMargins(glass ? 0 : dp(28), 0, glass ? 0 : dp(28), 0);
+        topDivider.setLayoutParams(dividerParams);
+        topDivider.setVisibility(glass ? INVISIBLE : VISIBLE);
+        bandRule.setVisibility(glass ? GONE : VISIBLE);
+        clockCard.setGravity(glass ? Gravity.RIGHT | Gravity.CENTER_VERTICAL : Gravity.RIGHT);
+        for (LinearLayout card : new LinearLayout[]{clockCard, nextCard}) {
+            card.setBackground(glass ? glassCard(false) : null);
+            card.setPadding(glass ? dp(24) : 0, glass ? dp(16) : 0, glass ? dp(24) : 0, glass ? dp(16) : 0);
+        }
+        verseCard.setBackground(null);
+        verseCard.setPadding(0, 0, 0, 0);
+        // The big clock and the verse are a little smaller so the left card holds both.
+        time.setTextSize(TypedValue.COMPLEX_UNIT_SP, glass ? 58 : 72);
+        verseText.setTextSize(TypedValue.COMPLEX_UNIT_SP, glass ? 19 : 22);
+        verseText.setMaxLines(glass ? 1 : 2);
+        LinearLayout.LayoutParams ringParams = (LinearLayout.LayoutParams) iqamaRing.getLayoutParams();
+        ringParams.width = ringParams.height = dp(glass ? 150 : 176);
+        iqamaRing.setLayoutParams(ringParams);
+        LinearLayout.LayoutParams bandParams = new LinearLayout.LayoutParams(-1, glass ? dp(96) : -2);
+        bandParams.topMargin = glass ? dp(14) : 0;
+        band.setLayoutParams(bandParams);
         for (int i = 0; i < 6; i++) {
-            LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) columns[i].getLayoutParams();
-            int gap = glass ? dp(5) : 0;
-            params.setMargins(gap, glass ? dp(4) : 0, gap, 0);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, glass ? -1 : -2, 1);
+            int gap = glass ? dp(6) : 0;
+            params.setMargins(gap, 0, gap, 0);
             columns[i].setLayoutParams(params);
-            columns[i].setPadding(dp(glass ? 16 : 10), dp(10), dp(glass ? 16 : 10), glass ? dp(10) : 0);
+            columns[i].setGravity(glass ? Gravity.CENTER : Gravity.RIGHT);
+            columns[i].setPadding(dp(10), dp(10), dp(10), glass ? dp(10) : 0);
         }
         paintColumns();
     }

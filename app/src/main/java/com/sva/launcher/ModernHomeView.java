@@ -201,7 +201,10 @@ final class ModernHomeView extends FrameLayout {
                 super.setText(ModernTheme.forFont(font, value), type);
             }
         };
-        view.setTextSize(TypedValue.COMPLEX_UNIT_PX, size * k * ModernTheme.scale(font) * sizeFactor);
+        float px = size * k * ModernTheme.scale(font) * sizeFactor;
+        view.setTextSize(TypedValue.COMPLEX_UNIT_PX, px);
+        float[] trim = ModernTheme.trim(font);
+        view.setPadding(0, -Math.round(trim[0] * px), 0, -Math.round(trim[1] * px));
         view.setTextColor(color);
         view.setTypeface(ModernTheme.typeface(getContext(), font, weight));
         view.setIncludeFontPadding(false);
@@ -233,14 +236,22 @@ final class ModernHomeView extends FrameLayout {
         // Left: city, humidity, wind. Right: temperature and condition, then the icon.
         LinearLayout side = column(Gravity.LEFT);
         TextView city = text(8, soft, 400); city.setGravity(Gravity.LEFT); city.setText(forecast.location);
-        TextView humidity = text(8, soft, 400); humidity.setGravity(Gravity.LEFT);
-        humidity.setText(forecast.humidity >= 0 ? "الرطوبة " + ArabicFormat.digits(forecast.humidity) + "٪" : "");
-        TextView wind = text(8, soft, 400); wind.setGravity(Gravity.LEFT);
-        wind.setText("الرياح " + ArabicFormat.digits(Math.round(forecast.windSpeed)) + " كم/س");
-        side.addView(city); addGap(side, 2); side.addView(humidity); addGap(side, 2); side.addView(wind);
+        // Today's high and low, then humidity and wind on one line.
+        TextView range = text(8, ink, 400); range.setGravity(Gravity.LEFT);
+        String todayIso = LocalDate.now().toString();
+        if (!forecast.days.isEmpty() && todayIso.equals(forecast.days.get(0).date)) {
+            WeatherRepository.Day today = forecast.days.get(0);
+            range.setText("العظمى " + ArabicFormat.digits(Math.round(today.high)) + "°   الصغرى "
+                    + ArabicFormat.digits(Math.round(today.low)) + "°");
+        }
+        TextView air = text(8, soft, 400); air.setGravity(Gravity.LEFT);
+        air.setText((forecast.humidity >= 0 ? "الرطوبة " + ArabicFormat.digits(forecast.humidity) + "٪  ·  " : "")
+                + "الرياح " + ArabicFormat.digits(Math.round(forecast.windSpeed)) + " كم/س");
+        side.addView(city); addGap(side, 2); side.addView(range); addGap(side, 2); side.addView(air);
         top.addView(side, new LinearLayout.LayoutParams(0, -2, 1));
         LinearLayout temp = column(Gravity.RIGHT);
         TextView value = text(25.6f, ink, 300);
+        value.setEllipsize(null);
         String t = ArabicFormat.digits(Math.round(forecast.temperature)) + "°م";
         SpannableString styled = new SpannableString(t);
         int degree = t.indexOf('°');
@@ -269,14 +280,14 @@ final class ModernHomeView extends FrameLayout {
             WeatherRepository.Day d = forecast.days.get(i);
             LinearLayout cell = column(Gravity.CENTER_HORIZONTAL);
             cell.setPadding(0, u(2), 0, u(3));
-            if (i == 0) {
+            if (todayIso.equals(d.date)) {
                 GradientDrawable now = new GradientDrawable();
                 now.setColor(glass2); now.setCornerRadius(u(8)); now.setStroke(Math.max(1, u(0.8f)), edge);
                 cell.setBackground(now);
             }
             TextView name = text(8, i == 0 ? ink : soft, 400);
             name.setGravity(Gravity.CENTER);
-            name.setText(weekday(d.date));
+            name.setText(todayIso.equals(d.date) ? "اليوم" : weekday(d.date));
             ImageView dayIcon = new ImageView(getContext());
             dayIcon.setImageDrawable(new ModernIcons.Weather(ModernIcons.weatherKind(d.code, true)));
             TextView range = text(8, ink, 400);
@@ -317,6 +328,8 @@ final class ModernHomeView extends FrameLayout {
         TextView body = text(13.6f, ink, 400);
         body.setTypeface(ModernTheme.typeface(getContext(), verseFont, 400));
         body.setTextSize(TypedValue.COMPLEX_UNIT_PX, ("naskh".equals(verseFont) ? 13.2f : 14.4f) * k * sizeFactor);
+        mark.setPadding(0, 0, 0, 0);
+        body.setPadding(0, 0, 0, 0);
         body.setSingleLine(false);
         body.setMaxLines(2);
         body.setLineSpacing(0, 1.25f);
@@ -338,43 +351,40 @@ final class ModernHomeView extends FrameLayout {
     }
 
     private View clockCard() {
-        FrameLayout card = new FrameLayout(getContext());
         LinearLayout row = new LinearLayout(getContext());
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(u(16), 0, u(16), u(10));
-        // Left to right: date column, divider, period, time (the time sits at the right).
+        row.setPadding(u(14), 0, u(16), 0);
+        // Left to right: the date (weekday, Gregorian, Hijri), a thin divider, then the time at the right.
         LocalDate today = LocalDate.now();
-        LinearLayout date = column(Gravity.CENTER_HORIZONTAL);
+        LinearLayout date = column(Gravity.CENTER);
         TextView weekday = text(9.6f, soft, 400); weekday.setGravity(Gravity.CENTER);
         weekday.setText(WEEKDAYS[today.getDayOfWeek().getValue() - 1]);
-        TextView number = text(24, ink, 300); number.setGravity(Gravity.CENTER);
-        number.setText(ArabicFormat.digits(today.getDayOfMonth()));
-        TextView month = text(9.6f, soft, 400); month.setGravity(Gravity.CENTER);
-        month.setText(ArabicFormat.month(today.getMonthValue()));
-        date.addView(weekday); addGap(date, 3); date.addView(number); addGap(date, 3); date.addView(month);
+        TextView gregorian = text(11.5f, ink, 500); gregorian.setGravity(Gravity.CENTER);
+        gregorian.setText(ArabicFormat.digits(today.getDayOfMonth()) + " " + ArabicFormat.month(today.getMonthValue())
+                + " " + ArabicFormat.digits(today.getYear()));
+        TextView hijri = text(9.6f, gold, 400); hijri.setGravity(Gravity.CENTER);
+        hijri.setText(ArabicFormat.hijri(today));
+        date.addView(weekday, new LinearLayout.LayoutParams(-1, -2)); addGap(date, 5);
+        date.addView(gregorian, new LinearLayout.LayoutParams(-1, -2)); addGap(date, 5);
+        date.addView(hijri, new LinearLayout.LayoutParams(-1, -2));
         View divider = new View(getContext());
         divider.setBackgroundColor(line);
         clockPeriod = text(11.2f, soft, 300);
         clockText = text(36.8f, ink, 300);
         clockText.setGravity(Gravity.RIGHT);
-        row.addView(new View(getContext()), new LinearLayout.LayoutParams(0, 1, 1));
-        row.addView(date, new LinearLayout.LayoutParams(-2, -2));
+        row.addView(date, new LinearLayout.LayoutParams(0, -2, 1));
         LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(Math.max(1, u(0.8f)), u(56));
-        dividerParams.setMargins(u(13), 0, u(13), 0);
+        dividerParams.setMargins(u(10), 0, u(12), 0);
         row.addView(divider, dividerParams);
+        // Period and time share a baseline, the period on the left of the digits.
+        LinearLayout time = new LinearLayout(getContext());
+        time.setBaselineAligned(true);
         LinearLayout.LayoutParams periodParams = new LinearLayout.LayoutParams(-2, -2);
-        periodParams.gravity = Gravity.BOTTOM;
         periodParams.rightMargin = u(4);
-        periodParams.bottomMargin = u(14);
-        row.addView(clockPeriod, periodParams);
-        row.addView(clockText, new LinearLayout.LayoutParams(-2, -2));
-        card.addView(row, new LayoutParams(-1, -1));
-        TextView hijri = text(8, faint, 400);
-        hijri.setText(ArabicFormat.hijri(today));
-        LayoutParams hijriParams = new LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.RIGHT);
-        hijriParams.setMargins(0, 0, u(16), u(9));
-        card.addView(hijri, hijriParams);
-        return card;
+        time.addView(clockPeriod, periodParams);
+        time.addView(clockText, new LinearLayout.LayoutParams(-2, -2));
+        row.addView(time, new LinearLayout.LayoutParams(-2, -2));
+        return row;
     }
 
     private View occasionCard() {

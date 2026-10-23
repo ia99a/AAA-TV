@@ -8,7 +8,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public final class WeatherRepositoryTest {
-    @Test public void parsesCurrentAndNextThreeDays() throws Exception {
+    @Test public void parsesCurrentTodayAndNextDays() throws Exception {
         JSONObject root = new JSONObject("{\"current\":{\"temperature_2m\":28.4,\"apparent_temperature\":30.1,\"weather_code\":2,\"is_day\":1,\"wind_speed_10m\":12.5},"
                 + "\"daily\":{\"time\":[\"2026-09-28\",\"2026-09-29\",\"2026-09-30\",\"2026-10-01\"],"
                 + "\"weather_code\":[2,61,3,95],\"temperature_2m_max\":[30,29,31,28],"
@@ -16,9 +16,11 @@ public final class WeatherRepositoryTest {
         WeatherRepository.Forecast forecast = WeatherRepository.parseForecast(root, "Pune", 1234L);
         assertEquals("Pune", forecast.location);
         assertEquals(28.4, forecast.temperature, .001);
-        assertEquals(3, forecast.days.size());
-        assertEquals("2026-09-29", forecast.days.get(0).date);
-        assertEquals(70, forecast.days.get(0).precipitation);
+        assertEquals(4, forecast.days.size());
+        assertEquals("2026-09-28", forecast.days.get(0).date);
+        assertEquals(30, forecast.days.get(0).high, .001);
+        assertEquals("2026-09-29", forecast.days.get(1).date);
+        assertEquals(70, forecast.days.get(1).precipitation);
     }
 
     @Test public void cacheRoundTrips() throws Exception {

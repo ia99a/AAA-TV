@@ -68,7 +68,7 @@ final class QuickSettingsView extends FrameLayout {
     private static final int THEME = 0, MODE = 1, FONT = 2, VERSE_FONT = 3, TEXT_SIZE = 4, FONT_SAMPLE = 5,
             MOOD = 6, COLOUR = 7, FIXED = 8, FIXED_SCREEN = 9, FIXED_CLEAR = 12, GALLERY_SET = 13, GALLERY = 14,
             CARD = 20, APPS = 40, TABS = 41, WEATHER = 42, PRAYER_CITY = 43, ALERTS = 44, KIOSK = 45, ABOUT = 46;
-    private static final int SEG = 0, SWITCH = 1, VALUE = 2, GO = 3, ACTION = 4, TILES = 5, INFO = 6;
+    private static final int SEG = 0, SWITCH = 1, VALUE = 2, GO = 3, ACTION = 4, TILES = 5, INFO = 6, PICK = 7;
     private static final int PAGE_OPTIONS = 0, PAGE_APPS = 1, PAGE_TABS = 2;
 
     private final SharedPreferences preferences;
@@ -270,10 +270,10 @@ final class QuickSettingsView extends FrameLayout {
                 if (modern) add(MODE, SEG);
                 break;
             case FONTS:
-                subtitle.setText(modern ? "يتغيّر النص في «آمر» مباشرة" : "خط الآية في صفحة الصلاة · بقية الخطوط في «بسيط ٢»");
-                if (modern) add(FONT, TILES);
+                subtitle.setText(modern ? "يتغيّر النص في «آمر» مباشرة" : "خط الواجهة وحجمه يظهران في ثيم «بسيط ٢»");
+                add(FONT, TILES);
                 add(VERSE_FONT, SEG);
-                if (modern) add(TEXT_SIZE, SEG);
+                add(TEXT_SIZE, SEG);
                 add(FONT_SAMPLE, INFO);
                 break;
             case WALLS:
@@ -281,7 +281,7 @@ final class QuickSettingsView extends FrameLayout {
                 add(MOOD, VALUE);
                 if (WallpaperMoods.CALM.equals(WallpaperMoods.current(preferences))) add(COLOUR, VALUE);
                 if (modern) {
-                    add(FIXED, INFO);
+                    add(FIXED, PICK);
                     if (FixedBackground.picture(preferences) != null) {
                         for (int i = 0; i < FixedBackground.SCREEN_KEYS.length; i++) add(FIXED_SCREEN + i, SWITCH);
                         add(FIXED_CLEAR, ACTION);
@@ -422,8 +422,22 @@ final class QuickSettingsView extends FrameLayout {
                 arrow.setText(kind == GO ? "‹" : "");
                 return arrow;
             }
+            case PICK: {
+                // ‹ picture › : Left/Right walk through every picture in «الخلفيات».
+                LinearLayout pick = new LinearLayout(context);
+                pick.setGravity(Gravity.CENTER_VERTICAL);
+                TextView before = text(context, 16, SOFT, false);
+                before.setText("‹");
+                TextView after = text(context, 16, SOFT, false);
+                after.setText("›");
+                pick.addView(before);
+                LinearLayout.LayoutParams thumbParams = new LinearLayout.LayoutParams(dp(74), dp(42));
+                thumbParams.setMargins(dp(10), 0, dp(10), 0);
+                pick.addView(thumbnail(), thumbParams);
+                pick.addView(after);
+                return pick;
+            }
             case INFO:
-                if (id == FIXED) return thumbnail();
                 return null;
             default: return null;
         }
@@ -470,7 +484,6 @@ final class QuickSettingsView extends FrameLayout {
                 outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), dp(8));
             }
         });
-        image.setLayoutParams(new LinearLayout.LayoutParams(dp(74), dp(42)));
         String asset = FixedBackground.picture(preferences);
         if (asset == null) return image;
         if (asset.equals(thumbAsset) && thumb != null) { image.setImageBitmap(thumb); return image; }
@@ -524,7 +537,8 @@ final class QuickSettingsView extends FrameLayout {
             case VERSE_FONT: return "في «آمر» وصفحة الصلاة";
             case FIXED: {
                 String asset = FixedBackground.picture(preferences);
-                return asset == null ? "في «الخلفيات» اضغط OK مطوّلًا على الصورة التي تريدها" : FixedBackground.label(asset);
+                return asset == null ? "يمين/يسار لاختيار صورة، أو OK مطوّلًا على صورة في «الخلفيات»"
+                        : FixedBackground.label(asset) + "  ·  يمين/يسار للتغيير";
             }
             case FIXED_CLEAR: return "ترجع الخلفية العادية في كل الشاشات";
             case APPS: {
@@ -625,6 +639,16 @@ final class QuickSettingsView extends FrameLayout {
                 int index = Math.floorMod(preferences.getInt(CalmWallpapers.PREF, CalmWallpapers.DEFAULT) + delta, CalmWallpapers.NAMES.length);
                 preferences.edit().putInt(CalmWallpapers.PREF, index).apply();
                 listener.onCalmColourChanged(index);
+                break;
+            }
+            case FIXED: {
+                List<String> all = GalleryView.picturesIn(getContext().getAssets(), "all");
+                if (all.isEmpty()) return;
+                int at = all.indexOf(FixedBackground.picture(preferences));
+                int next = at < 0 ? (delta > 0 ? 0 : all.size() - 1) : Math.floorMod(at + delta, all.size());
+                FixedBackground.set(preferences, all.get(next));
+                listener.onFixedBackgroundChanged();
+                structure = true; // The per-screen switches appear once a picture is set.
                 break;
             }
             case FIXED_CLEAR:

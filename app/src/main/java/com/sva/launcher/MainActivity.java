@@ -204,6 +204,9 @@ public final class MainActivity extends Activity {
     private View fixedVeil;
     private String fixedLoaded;
     private LinearLayout calendarHeading;
+    private String navigationSignature;
+    /** The calendar is redrawn only when its look («بسيط ١» or «بسيط ٢») changes. */
+    private Boolean calendarGlass;
     private final GlassBackdrop glassBackdrop = new GlassBackdrop();
     private FrameLayout homePage;
     private boolean initialAppFocus;
@@ -1844,8 +1847,14 @@ public final class MainActivity extends Activity {
             }
             dayBackdrop.setVisibility(day && activeTab == TAB_HOME ? View.VISIBLE : View.GONE);
         }
-        styleNavigation(modern, day);
-        rebuildNavigationButtons();
+        // Rebuilding the bar moves focus (and can switch the page behind the settings), so only do it
+        // when the theme, the day/night look or the tabs really changed.
+        String navigation = modern + "|" + day + "|" + ModernTheme.tabs(preferences);
+        if (!navigation.equals(navigationSignature)) {
+            navigationSignature = navigation;
+            styleNavigation(modern, day);
+            rebuildNavigationButtons();
+        }
         for (int i = 0; i < tabButtons.length; i++) {
             if (tabButtons[i] != null && navigationGlyphs[i] != null) {
                 navigationGlyphs[i].setGlyphColor(tabTextColor(i == activeTab));
@@ -1857,10 +1866,17 @@ public final class MainActivity extends Activity {
         if (prayerView != null) prayerView.setGlass(modern);
         if (quranView != null) quranView.setGlass(modern);
         if (calendarHeading != null) {
-            calendarHeading.setBackground(modern ? calendarGlassShape(0xC0141820, 0x22FFFFFF, 20) : null);
+            GradientDrawable heading = new GradientDrawable();
+            heading.setColor(0xC0141820);
+            heading.setCornerRadius(dp(20));
+            heading.setStroke(Math.max(1, dp(1)), 0x22FFFFFF);
+            calendarHeading.setBackground(modern ? heading : null);
             calendarHeading.setPadding(modern ? dp(14) : 0, 0, modern ? dp(14) : 0, 0);
         }
-        if (calendarMonthGrid != null && displayedMonth != null) renderMonthCalendar(cachedCalendarEvents());
+        if (calendarMonthGrid != null && displayedMonth != null && !Boolean.valueOf(modern).equals(calendarGlass)) {
+            calendarGlass = modern;
+            renderMonthCalendar(cachedCalendarEvents());
+        }
         if (browsingShade != null) browsingShade.setAlpha(shadeAlpha(activeTab, 0));
         updateFixedBackground();
         renderWeather();
