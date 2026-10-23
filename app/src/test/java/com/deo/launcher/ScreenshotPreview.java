@@ -46,6 +46,11 @@ public final class ScreenshotPreview {
     }
 
     private void shoot(String font, String fixed, int tab, String name, boolean settings) throws Exception {
+        shoot(font, fixed, tab, name, settings, null);
+    }
+
+    private void shoot(String font, String fixed, int tab, String name, boolean settings,
+                       java.time.YearMonth month) throws Exception {
         SharedPreferences p = org.robolectric.RuntimeEnvironment.getApplication()
                 .getSharedPreferences("launcher", 0);
         prepare(p, font, fixed);
@@ -54,6 +59,16 @@ public final class ScreenshotPreview {
         Method select = MainActivity.class.getDeclaredMethod("selectTab", int.class, boolean.class);
         select.setAccessible(true);
         select.invoke(activity, tab, false);
+        if (month != null) {
+            Field shown = MainActivity.class.getDeclaredField("displayedMonth");
+            shown.setAccessible(true);
+            shown.set(activity, month);
+            Method cached = MainActivity.class.getDeclaredMethod("cachedCalendarEvents");
+            cached.setAccessible(true);
+            Method render = MainActivity.class.getDeclaredMethod("renderMonthCalendar", java.util.List.class);
+            render.setAccessible(true);
+            render.invoke(activity, cached.invoke(activity));
+        }
         if (settings) {
             Field field = MainActivity.class.getDeclaredField("quickSettings");
             field.setAccessible(true);
@@ -90,6 +105,12 @@ public final class ScreenshotPreview {
     @Test public void calendarTajawal() throws Exception { shoot("tajawal", null, tab("TAB_EVENTS"), "calendar-tajawal", false); }
     @Test public void calendarHarmattanFixed() throws Exception {
         shoot("harmattan", "gallery/nature/mountain-lake.jpg", tab("TAB_EVENTS"), "calendar-harmattan-fixed", false);
+    }
+    @Test public void calendarMayBusy() throws Exception {
+        shoot("tajawal", null, tab("TAB_EVENTS"), "calendar-may-2027", false, java.time.YearMonth.of(2027, 5));
+    }
+    @Test public void calendarMarchRamadan() throws Exception {
+        shoot("harmattan", null, tab("TAB_EVENTS"), "calendar-march-2027", false, java.time.YearMonth.of(2027, 3));
     }
     @Test public void homeTajawal() throws Exception { shoot("tajawal", null, tab("TAB_HOME"), "home-tajawal", false); }
     @Test public void homeFixed() throws Exception {
