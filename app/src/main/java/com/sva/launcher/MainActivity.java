@@ -196,6 +196,8 @@ public final class MainActivity extends Activity {
     private LinearLayout systemShortcuts;
     private View browsingShade;
     private FrameLayout heroFrame;
+    /** «بسيط ١»: clock, weather and occasion above the apps; hidden under «بسيط ٢», which has its own cards. */
+    private FrameLayout homeTopBar;
     private final GlassBackdrop glassBackdrop = new GlassBackdrop();
     private FrameLayout homePage;
     private boolean initialAppFocus;
@@ -1155,6 +1157,7 @@ public final class MainActivity extends Activity {
         page.setClipChildren(false);
         page.setClipToPadding(false);
         page.addView(topBar, new FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
+        homeTopBar = topBar;
 
         homeContent = new LinearLayout(this);
         homeContent.setOrientation(LinearLayout.VERTICAL);
@@ -1739,6 +1742,8 @@ public final class MainActivity extends Activity {
         boolean day = modern && ModernTheme.day(preferences);
         modernGlyphs = modern;
         if (root != null) root.setVisibility(modern ? View.GONE : View.VISIBLE);
+        // The old top bar lives beside root on the same page, so it must be hidden on its own.
+        if (homeTopBar != null) homeTopBar.setVisibility(modern ? View.GONE : View.VISIBLE);
         if (modernHome != null) {
             modernHome.setVisibility(modern ? View.VISIBLE : View.GONE);
             if (modern) modernHome.rebuild();

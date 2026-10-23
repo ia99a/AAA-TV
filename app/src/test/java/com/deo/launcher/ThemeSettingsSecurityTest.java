@@ -53,6 +53,16 @@ public final class ThemeSettingsSecurityTest {
         assertEquals("tajawal", ModernTheme.font(p));
     }
 
+    @Test public void verseFontAndTextSizeFallBackSafely() {
+        Prefs p = new Prefs();
+        p.values.put(ModernTheme.PREF_VERSE_FONT, "../evil");
+        assertEquals("amiri", ModernTheme.verseFont(p));
+        p.values.put(ModernTheme.PREF_TEXT_SIZE, "huge");
+        assertEquals(1f, ModernTheme.textSizeFactor(p), 0f);
+        ModernTheme.step(p, ModernTheme.PREF_TEXT_SIZE, ModernTheme.TEXT_SIZE_KEYS, "large", 1);
+        assertEquals("small", p.values.get(ModernTheme.PREF_TEXT_SIZE));
+    }
+
     @Test public void barTabsAcceptOnlyKnownTabs() {
         Prefs p = new Prefs();
         p.values.put(ModernTheme.PREF_TABS, "quran,../secret,prayer,quran,settings,haram");

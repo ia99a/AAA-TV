@@ -5,7 +5,6 @@ import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
-import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
@@ -57,6 +56,7 @@ final class ModernHomeView extends FrameLayout {
     private final LinearLayout appRow;
     private boolean day;
     private String font;
+    private float sizeFactor = 1f;
     private int ink, soft, faint, glass, glass2, edge, gold, line;
 
     private WeatherRepository.Forecast forecast;
@@ -104,6 +104,7 @@ final class ModernHomeView extends FrameLayout {
     void rebuild() {
         day = ModernTheme.day(preferences);
         font = ModernTheme.font(preferences);
+        sizeFactor = ModernTheme.textSizeFactor(preferences);
         if (day) {
             ink = 0xFF1F2A37; soft = 0x9E1F2A37; faint = 0x661F2A37; glass = 0x99FFFFFF; glass2 = 0x66FFFFFF;
             edge = 0xCCFFFFFF; gold = 0xFFB7832F; line = 0x1A1F2A37;
@@ -195,8 +196,12 @@ final class ModernHomeView extends FrameLayout {
     }
 
     private TextView text(float size, int color, int weight) {
-        TextView view = new TextView(getContext());
-        view.setTextSize(TypedValue.COMPLEX_UNIT_PX, size * k * ModernTheme.scale(font));
+        TextView view = new TextView(getContext()) {
+            @Override public void setText(CharSequence value, BufferType type) {
+                super.setText(ModernTheme.forFont(font, value), type);
+            }
+        };
+        view.setTextSize(TypedValue.COMPLEX_UNIT_PX, size * k * ModernTheme.scale(font) * sizeFactor);
         view.setTextColor(color);
         view.setTypeface(ModernTheme.typeface(getContext(), font, weight));
         view.setIncludeFontPadding(false);
@@ -303,11 +308,15 @@ final class ModernHomeView extends FrameLayout {
         LinearLayout card = column(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
         card.setPadding(u(21), u(14), u(21), u(14));
         String[] verse = DailyVerses.forEpochDay(today.toEpochDay());
+        // The verse has its own Quranic font (Amiri or Naskh), whatever the interface font is.
+        String verseFont = ModernTheme.verseFont(preferences);
         TextView mark = text(18, gold, 400);
-        mark.setTypeface(Typeface.SERIF);
-        mark.setText("❝");
+        mark.setTypeface(ModernTheme.typeface(getContext(), verseFont, 400));
+        mark.setTextSize(TypedValue.COMPLEX_UNIT_PX, 22 * k);
+        mark.setText("\u201D");
         TextView body = text(13.6f, ink, 400);
-        body.setTypeface(Typeface.create(Typeface.SERIF, Typeface.NORMAL));
+        body.setTypeface(ModernTheme.typeface(getContext(), verseFont, 400));
+        body.setTextSize(TypedValue.COMPLEX_UNIT_PX, ("naskh".equals(verseFont) ? 13.2f : 14.4f) * k * sizeFactor);
         body.setSingleLine(false);
         body.setMaxLines(2);
         body.setLineSpacing(0, 1.25f);

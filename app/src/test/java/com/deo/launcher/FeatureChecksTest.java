@@ -176,14 +176,23 @@ public final class FeatureChecksTest {
 
     @Test public void bundledFontsAreOpenLicensedAndCoverTheText() throws Exception {
         for (String name : new String[]{"tajawal-300", "tajawal-400", "tajawal-500", "harmattan-400", "harmattan-500",
-                "jomhuria-400", "aref-ruqaa-400", "aref-ruqaa-700"}) {
+                "jomhuria-400", "aref-ruqaa-400", "aref-ruqaa-700", "amiri-400", "naskh-400"}) {
             assertTrue(name, new File("src/main/assets/fonts/" + name + ".ttf").isFile());
         }
-        for (String family : new String[]{"tajawal", "harmattan", "jomhuria", "aref-ruqaa"}) {
+        for (String family : new String[]{"tajawal", "harmattan", "jomhuria", "aref-ruqaa", "amiri", "naskh"}) {
             String license = new String(java.nio.file.Files.readAllBytes(
                     new File("src/main/assets/fonts/OFL-" + family + ".txt").toPath()), java.nio.charset.StandardCharsets.UTF_8);
             assertTrue(family, license.contains("SIL Open Font License"));
         }
+    }
+
+    @Test public void oldTopBarIsHiddenUnderTheGlassTheme() throws Exception {
+        String main = new String(java.nio.file.Files.readAllBytes(
+                new File("src/main/java/com/sva/launcher/MainActivity.java").toPath()), java.nio.charset.StandardCharsets.UTF_8);
+        assertTrue(main.contains("homeTopBar.setVisibility(modern ? View.GONE : View.VISIBLE)"));
+        assertEquals("أ • ب", ModernTheme.forFont("jomhuria", "أ · ب"));
+        assertEquals("أ · ب", ModernTheme.forFont("tajawal", "أ · ب"));
+        assertEquals("تجوال", ModernTheme.fontName("tajawal"));
     }
 
     @Test public void weatherIconsCoverEveryCode() {

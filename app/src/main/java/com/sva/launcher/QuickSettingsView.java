@@ -41,7 +41,7 @@ final class QuickSettingsView extends FrameLayout {
     static final String PREF_WEATHER_CITY = "weatherCityKey";
     private static final int INK = 0xFFF1ECE2, SOFT = 0x99F1ECE2, GOLD = 0xFFE3B469;
     private static final int THEME = 0, MODE = 1, FONT = 2, MOOD = 3, COLOUR = 4, WEATHER = 5, CARDS = 6, APPS = 7,
-            TABS = 8, KIOSK = 9, GALLERY_SET = 10, GALLERY = 11;
+            TABS = 8, KIOSK = 9, GALLERY_SET = 10, GALLERY = 11, VERSE_FONT = 12, TEXT_SIZE = 13;
     private static final int PAGE_MAIN = 0, PAGE_APPS = 1, PAGE_TABS = 2, PAGE_CARDS = 3;
 
     private final SharedPreferences preferences;
@@ -167,7 +167,7 @@ final class QuickSettingsView extends FrameLayout {
         rowIds.clear();
         boolean modern = ModernTheme.modern(preferences);
         addMain(THEME);
-        if (modern) { addMain(MODE); addMain(FONT); }
+        if (modern) { addMain(MODE); addMain(FONT); addMain(VERSE_FONT); addMain(TEXT_SIZE); }
         addMain(MOOD);
         if (calm()) addMain(COLOUR);
         addMain(WEATHER);
@@ -200,6 +200,14 @@ final class QuickSettingsView extends FrameLayout {
             for (int i = 0; i < ModernTheme.FONT_KEYS.length; i++) if (ModernTheme.FONT_KEYS[i].equals(current)) index = i;
             String next = ModernTheme.FONT_KEYS[Math.floorMod(index + delta, ModernTheme.FONT_KEYS.length)];
             preferences.edit().putString(ModernTheme.PREF_FONT, next).apply();
+            listener.onHomeThemeChanged();
+        } else if (id == VERSE_FONT) {
+            ModernTheme.step(preferences, ModernTheme.PREF_VERSE_FONT, ModernTheme.VERSE_FONT_KEYS,
+                    ModernTheme.verseFont(preferences), delta);
+            listener.onHomeThemeChanged();
+        } else if (id == TEXT_SIZE) {
+            ModernTheme.step(preferences, ModernTheme.PREF_TEXT_SIZE, ModernTheme.TEXT_SIZE_KEYS,
+                    ModernTheme.TEXT_SIZE_KEYS[ModernTheme.textSize(preferences)], delta);
             listener.onHomeThemeChanged();
         } else if (id == MOOD) {
             int index = Math.floorMod(WallpaperMoods.index(WallpaperMoods.current(preferences)) + delta, WallpaperMoods.KEYS.length);
@@ -248,6 +256,8 @@ final class QuickSettingsView extends FrameLayout {
             case THEME: return "‹  الثيم: " + ModernTheme.THEME_NAMES[ModernTheme.theme(preferences) - 1] + "  ›";
             case MODE: return "‹  الوضع: " + (ModernTheme.day(preferences) ? "نهار" : "ليل") + "  ›";
             case FONT: return "‹  الخط: " + ModernTheme.fontName(ModernTheme.font(preferences)) + "  ›";
+            case VERSE_FONT: return "‹  خط الآية: " + ModernTheme.verseFontName(ModernTheme.verseFont(preferences)) + "  ›";
+            case TEXT_SIZE: return "‹  حجم الخط: " + ModernTheme.TEXT_SIZE_NAMES[ModernTheme.textSize(preferences)] + "  ›";
             case MOOD: return "‹  الخلفية: " + WallpaperMoods.NAMES[WallpaperMoods.index(WallpaperMoods.current(preferences))] + "  ›";
             case COLOUR: return "‹  لون الهدوء: " + CalmWallpapers.NAMES[preferences.getInt(CalmWallpapers.PREF, CalmWallpapers.DEFAULT)] + "  ›";
             case WEATHER: return "‹  مدينة الطقس: " + PrayerTimes.city(preferences.getString(PREF_WEATHER_CITY, "riyadh")).name + "  ›";

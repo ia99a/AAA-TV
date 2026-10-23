@@ -21,7 +21,18 @@ final class ModernTheme {
     static final String[] THEME_NAMES = {"بسيط ١", "بسيط ٢"};
 
     static final String[] FONT_KEYS = {"noto", "tajawal", "harmattan", "jomhuria", "ruqaa"};
-    static final String[] FONT_NAMES = {"نوتو", "تجوّل", "هرمتان", "جمهورية", "الرقعة"};
+    static final String[] FONT_NAMES = {"نوتو", "تجوال", "هرمتان", "جمهورية", "الرقعة"};
+
+    /** The font of the daily verse: both carry the Quranic brackets ﴿ ﴾ and marks. */
+    static final String PREF_VERSE_FONT = "homeVerseFont";
+    static final String[] VERSE_FONT_KEYS = {"amiri", "naskh"};
+    static final String[] VERSE_FONT_NAMES = {"أميري", "نسخ"};
+
+    /** Text size on the glass home: small, normal, large. */
+    static final String PREF_TEXT_SIZE = "homeTextSize";
+    static final String[] TEXT_SIZE_KEYS = {"small", "normal", "large"};
+    static final String[] TEXT_SIZE_NAMES = {"صغير", "عادي", "كبير"};
+    private static final float[] TEXT_SIZE_FACTORS = {0.9f, 1f, 1.1f};
 
     static final String[] CARD_KEYS = {"weather", "clock", "verse", "wisdom", "poetry", "occasion", "prayer"};
     static final String[] CARD_NAMES = {"الطقس", "الساعة والتاريخ", "آية اليوم", "حكمة اليوم", "أبيات شعر",
@@ -46,6 +57,34 @@ final class ModernTheme {
     static String fontName(String key) {
         for (int i = 0; i < FONT_KEYS.length; i++) if (FONT_KEYS[i].equals(key)) return FONT_NAMES[i];
         return FONT_NAMES[0];
+    }
+
+    static String verseFont(SharedPreferences p) {
+        String key = p.getString(PREF_VERSE_FONT, "amiri");
+        return "naskh".equals(key) ? "naskh" : "amiri";
+    }
+
+    static String verseFontName(String key) { return "naskh".equals(key) ? VERSE_FONT_NAMES[1] : VERSE_FONT_NAMES[0]; }
+
+    static int textSize(SharedPreferences p) {
+        String key = p.getString(PREF_TEXT_SIZE, "normal");
+        for (int i = 0; i < TEXT_SIZE_KEYS.length; i++) if (TEXT_SIZE_KEYS[i].equals(key)) return i;
+        return 1;
+    }
+
+    static float textSizeFactor(SharedPreferences p) { return TEXT_SIZE_FACTORS[textSize(p)]; }
+
+    /** Steps a string preference through a whitelist of keys. */
+    static void step(SharedPreferences p, String pref, String[] keys, String current, int delta) {
+        int at = 0;
+        for (int i = 0; i < keys.length; i++) if (keys[i].equals(current)) at = i;
+        p.edit().putString(pref, keys[Math.floorMod(at + delta, keys.length)]).apply();
+    }
+
+    /** Jomhuria has no middle dot, so separators use a bullet it does have. */
+    static String forFont(String key, CharSequence text) {
+        String value = text == null ? "" : text.toString();
+        return "jomhuria".equals(key) ? value.replace('\u00B7', '\u2022') : value;
     }
 
     static boolean card(SharedPreferences p, String key) { return p.getBoolean(CARD_PREFIX + key, true); }
@@ -83,6 +122,8 @@ final class ModernTheme {
             case "harmattan": file = "harmattan-" + (weight >= 500 ? 500 : 400); break;
             case "jomhuria": file = "jomhuria-400"; break;
             case "ruqaa": file = "aref-ruqaa-" + (weight >= 500 ? 700 : 400); break;
+            case "amiri": file = "amiri-400"; break;
+            case "naskh": file = "naskh-400"; break;
             default:
                 return Typeface.create(weight <= 300 ? "sans-serif-light" : weight >= 500 ? "sans-serif-medium" : "sans-serif",
                         Typeface.NORMAL);
