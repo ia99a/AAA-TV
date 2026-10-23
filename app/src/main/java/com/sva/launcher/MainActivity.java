@@ -206,7 +206,7 @@ public final class MainActivity extends Activity {
     private LinearLayout calendarHeading;
     private String navigationSignature;
     /** The calendar is redrawn only when its look («بسيط ١» or «بسيط ٢») changes. */
-    private Boolean calendarGlass;
+    private String calendarGlass;
     private final GlassBackdrop glassBackdrop = new GlassBackdrop();
     private FrameLayout homePage;
     private boolean initialAppFocus;
@@ -750,7 +750,9 @@ public final class MainActivity extends Activity {
         scene.addView(browsingShade, new FrameLayout.LayoutParams(-1, -1));
         fixedLayer = new FrameLayout(this);
         fixedLayer.setVisibility(View.GONE);
-        fixedImage = backgroundImage();
+        // A plain, visible, centre-cropped picture (backgroundImage() starts hidden, which kept it from ever showing).
+        fixedImage = new ImageView(this);
+        fixedImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
         fixedLayer.addView(fixedImage, new FrameLayout.LayoutParams(-1, -1));
         fixedVeil = new View(this);
         fixedVeil.setBackgroundColor(0xFF05070A);
@@ -793,7 +795,7 @@ public final class MainActivity extends Activity {
         tabScroller.setFillViewport(false);
         tabScroller.setClipChildren(true);
         tabScroller.setClipToPadding(false);
-        LinearLayout.LayoutParams tabGroupParams = new LinearLayout.LayoutParams(-2, dp(34));
+        LinearLayout.LayoutParams tabGroupParams = new LinearLayout.LayoutParams(-2, -1);
         navbar.addView(tabScroller, tabGroupParams);
         tabRow = new LinearLayout(this);
         tabRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -1756,6 +1758,15 @@ public final class MainActivity extends Activity {
         return Math.min(.94f, base + (float) scrollY / dp(600) * .2f);
     }
 
+    /** The «بسيط ٢» font chosen in the settings, for screens outside the home cards. */
+    private android.graphics.Typeface homeTypeface(int weight) {
+        return ModernTheme.typeface(this, ModernTheme.font(preferences), weight);
+    }
+
+    private float homeTextScale() {
+        return ModernTheme.scale(ModernTheme.font(preferences)) * ModernTheme.textSizeFactor(preferences);
+    }
+
     private static String screenKey(int tab) {
         return tab == TAB_HOME ? "home" : tab == TAB_PRAYER ? "prayer" : tab == TAB_EVENTS ? "events" : null;
     }
@@ -1873,8 +1884,16 @@ public final class MainActivity extends Activity {
             calendarHeading.setBackground(modern ? heading : null);
             calendarHeading.setPadding(modern ? dp(14) : 0, 0, modern ? dp(14) : 0, 0);
         }
-        if (calendarMonthGrid != null && displayedMonth != null && !Boolean.valueOf(modern).equals(calendarGlass)) {
-            calendarGlass = modern;
+        String calendarLook = modern + "|" + ModernTheme.font(preferences) + "|" + ModernTheme.textSize(preferences);
+        if (calendarMonthGrid != null && displayedMonth != null && !calendarLook.equals(calendarGlass)) {
+            calendarGlass = calendarLook;
+            if (monthTitle != null) {
+                monthTitle.setTypeface(modern ? homeTypeface(500) : LiquidTheme.font(this));
+                calendarHeaderDate.setTypeface(modern ? homeTypeface(400) : LiquidTheme.font(this));
+                calendarHeaderEvents.setTypeface(modern ? homeTypeface(500) : LiquidTheme.font(this));
+                calendarHeaderDate.setTextSize(modern ? 13 * homeTextScale() : 12);
+                calendarHeaderEvents.setTextSize(modern ? 15 * homeTextScale() : 14);
+            }
             renderMonthCalendar(cachedCalendarEvents());
         }
         if (browsingShade != null) browsingShade.setAlpha(shadeAlpha(activeTab, 0));
@@ -1888,24 +1907,46 @@ public final class MainActivity extends Activity {
     private void styleNavigation(boolean modern, boolean day) {
         if (navbarView != null) {
             if (modern) {
+                // The same glass, edge and corner as the home cards (14 of the 960-unit grid).
+                float unit = getResources().getDisplayMetrics().widthPixels / 960f;
                 GradientDrawable pill = new GradientDrawable();
                 pill.setColor(day ? 0x99FFFFFF : 0xC0141820);
-                pill.setCornerRadius(dp(20));
-                pill.setStroke(Math.max(1, dp(1)), day ? 0xCCFFFFFF : 0x22FFFFFF);
+                pill.setCornerRadius(Math.round(14 * unit));
+                pill.setStroke(Math.max(1, Math.round(0.8f * unit)), day ? 0xCCFFFFFF : 0x22FFFFFF);
                 navbarView.setBackground(pill);
             } else {
                 navbarView.setBackground(null);
             }
+            // «بسيط ٢»: a taller dock sitting the same distance from the bottom as the cards from the top.
+            ViewGroup.LayoutParams barParams = navbarView.getLayoutParams();
+            if (barParams != null) {
+                barParams.height = modern ? Math.round(getResources().getDisplayMetrics().widthPixels / 960f * 46) : dp(34);
+                navbarView.setLayoutParams(barParams);
+            }
+            if (navbarView.getParent() instanceof LinearLayout) {
+                LinearLayout dock = (LinearLayout) navbarView.getParent();
+                float unit = getResources().getDisplayMetrics().widthPixels / 960f;
+                ViewGroup.LayoutParams dockParams = dock.getLayoutParams();
+                if (dockParams != null) {
+                    dockParams.height = modern ? Math.round(unit * (46 + 6 + 20)) : dp(50);
+                    dock.setLayoutParams(dockParams);
+                }
+                dock.setPadding(dock.getPaddingLeft(), modern ? Math.round(unit * 6) : dp(8),
+                        dock.getPaddingRight(), modern ? Math.round(unit * 20) : dp(8));
+            }
+            navbarView.setPadding(modern ? Math.round(getResources().getDisplayMetrics().widthPixels / 960f * 10) : dp(10), 0,
+                    modern ? Math.round(getResources().getDisplayMetrics().widthPixels / 960f * 10) : dp(14), 0);
         }
         for (int i = 0; i < tabButtons.length; i++) {
             Button button = tabButtons[i];
             if (button == null || navigationGlyphs[i] == null) continue;
-            int size = modern ? dp(21) : dp(16);
+            float unit = getResources().getDisplayMetrics().widthPixels / 960f;
+            int size = modern ? Math.round(unit * 22) : dp(16);
             navigationGlyphs[i].setBounds(0, 0, size, size);
             button.setText(modern ? "" : TAB_TITLES[i]);
             button.setContentDescription(TAB_TITLES[i]);
             button.setCompoundDrawablePadding(modern ? 0 : dp(6));
-            int pad = modern ? dp(16) : dp(compactNavigation ? 12 : (i == TAB_HOME ? 18 : 10));
+            int pad = modern ? Math.round(unit * 20) : dp(compactNavigation ? 12 : (i == TAB_HOME ? 18 : 10));
             button.setPadding(pad, 0, pad, 0);
             button.setCompoundDrawablesRelative(null, null, navigationGlyphs[i], null);
         }
@@ -1983,7 +2024,8 @@ public final class MainActivity extends Activity {
         }
         // Right-to-left: the first tab sits at the right end of the bar.
         for (int i = visible.size() - 1; i >= 0; i--)
-            tabRow.addView(tabButtons[visible.get(i)], new LinearLayout.LayoutParams(-2, dp(32)));
+            tabRow.addView(tabButtons[visible.get(i)], new LinearLayout.LayoutParams(-2, ModernTheme.modern(preferences)
+                    ? Math.round(getResources().getDisplayMetrics().widthPixels / 960f * 38) : dp(32)));
     }
 
     private void openYouTubeSettings() {
@@ -2219,6 +2261,11 @@ public final class MainActivity extends Activity {
                     13, light ? LiquidTheme.secondaryText(this) : 0xFFC6D6DB, false);
             heading.setGravity(Gravity.CENTER);
             heading.setLetterSpacing(.1f);
+            if (ModernTheme.modern(preferences)) {
+                heading.setLetterSpacing(0f);
+                heading.setTypeface(homeTypeface(400));
+                heading.setTextSize(14 * homeTextScale());
+            }
             GridLayout.LayoutParams params = new GridLayout.LayoutParams();
             params.width = dp(cellWidth);
             params.height = dp(34);
@@ -2569,23 +2616,29 @@ private void updateCalendarDetails(List<PublicCalendarRepository.Event> events) 
 
     private void configurePaints() {
 
+        // «بسيط ٢» draws the days in the home font, a little larger; «بسيط ١» keeps its own look.
+        boolean glass = ModernTheme.modern(preferences);
+        float scale = glass ? homeTextScale() : 1f;
+        android.graphics.Typeface regular = glass ? homeTypeface(400) : LiquidTheme.font(MainActivity.this);
+        android.graphics.Typeface number = glass ? homeTypeface(300) : LiquidTheme.font(MainActivity.this);
+
         // Large date number.
-        datePaint.setTextSize(sp(20));
-        datePaint.setTypeface(LiquidTheme.font(MainActivity.this));
+        datePaint.setTextSize(sp(glass ? 21 * Math.min(scale, 1.15f) : 20));
+        datePaint.setTypeface(number);
 
         // MON / TUE / WED...
-        weekdayPaint.setTextSize(sp(9));
-        weekdayPaint.setTypeface(LiquidTheme.font(MainActivity.this));
+        weekdayPaint.setTextSize(sp(glass ? 10.5f * scale : 9));
+        weekdayPaint.setTypeface(regular);
 
-        // Moon phase.
-        moonPaint.setTextSize(sp(9));
-        moonPaint.setTypeface(LiquidTheme.font(MainActivity.this));
+        // Moon phase (the Hijri day).
+        moonPaint.setTextSize(sp(glass ? 10.5f * scale : 9));
+        moonPaint.setTypeface(regular);
 
         // Holiday/event.
-        eventPaint.setTextSize(sp(8));
-        eventPaint.setTypeface(LiquidTheme.font(MainActivity.this));
-        chipTextPaint.setTextSize(sp(9));
-        chipTextPaint.setTypeface(LiquidTheme.font(MainActivity.this));
+        eventPaint.setTextSize(sp(glass ? 10 * scale : 8));
+        eventPaint.setTypeface(regular);
+        chipTextPaint.setTextSize(sp(glass ? 10.5f * scale : 9));
+        chipTextPaint.setTypeface(regular);
         chipTextPaint.setColor(Color.WHITE);
 
         todayPaint.setStyle(Paint.Style.FILL);

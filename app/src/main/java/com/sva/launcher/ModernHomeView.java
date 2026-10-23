@@ -201,7 +201,9 @@ final class ModernHomeView extends FrameLayout {
                 super.setText(ModernTheme.forFont(font, value), type);
             }
         };
-        float px = size * k * ModernTheme.scale(font) * sizeFactor;
+        // Small labels are enlarged a little so they read well from the sofa.
+        float base = size < 12 ? size * 1.2f : size;
+        float px = base * k * ModernTheme.scale(font) * sizeFactor;
         view.setTextSize(TypedValue.COMPLEX_UNIT_PX, px);
         float[] trim = ModernTheme.trim(font);
         view.setPadding(0, -Math.round(trim[0] * px), 0, -Math.round(trim[1] * px));
@@ -249,24 +251,28 @@ final class ModernHomeView extends FrameLayout {
                 + "الرياح " + ArabicFormat.digits(Math.round(forecast.windSpeed)) + " كم/س");
         side.addView(city); addGap(side, 2); side.addView(todayRange); addGap(side, 2); side.addView(air);
         top.addView(side, new LinearLayout.LayoutParams(0, -2, 1));
+        // Right: the current temperature beside the weather icon (sun or crescent), the condition under them.
         LinearLayout temp = column(Gravity.RIGHT);
-        TextView value = text(25.6f, ink, 300);
+        LinearLayout current = new LinearLayout(getContext());
+        current.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+        TextView value = text(26f, ink, 300);
         value.setEllipsize(null);
-        String t = ArabicFormat.digits(Math.round(forecast.temperature)) + "°م";
+        String t = ArabicFormat.digits(Math.round(forecast.temperature)) + "°";
         SpannableString styled = new SpannableString(t);
-        int degree = t.indexOf('°');
-        styled.setSpan(new RelativeSizeSpan(0.42f), degree, t.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        styled.setSpan(new ForegroundColorSpan(soft), degree, t.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        styled.setSpan(new ForegroundColorSpan(gold), t.length() - 1, t.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         value.setText(styled);
-        TextView condition = text(9.6f, ink, 400);
-        condition.setText(WeatherRepository.conditionArabic(forecast.code));
-        temp.addView(value); addGap(temp, 3); temp.addView(condition);
-        top.addView(temp, new LinearLayout.LayoutParams(-2, -2));
+        current.addView(value, new LinearLayout.LayoutParams(-2, -2));
         ImageView icon = new ImageView(getContext());
         icon.setImageDrawable(new ModernIcons.Weather(ModernIcons.weatherKind(forecast.code, forecast.day)));
-        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(u(35), u(29));
-        iconParams.leftMargin = u(8);
-        top.addView(icon, iconParams);
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(u(36), u(30));
+        iconParams.leftMargin = u(6);
+        current.addView(icon, iconParams);
+        temp.addView(current, new LinearLayout.LayoutParams(-2, -2));
+        TextView condition = text(9.6f, soft, 400);
+        condition.setText(WeatherRepository.conditionArabic(forecast.code));
+        addGap(temp, 2);
+        temp.addView(condition, new LinearLayout.LayoutParams(-2, -2));
+        top.addView(temp, new LinearLayout.LayoutParams(-2, -2));
         card.addView(top, new LinearLayout.LayoutParams(-1, -2));
         View rule = new View(getContext());
         rule.setBackgroundColor(line);

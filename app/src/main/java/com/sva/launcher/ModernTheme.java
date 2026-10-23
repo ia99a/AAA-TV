@@ -82,9 +82,10 @@ final class ModernTheme {
     }
 
     /** Jomhuria has no middle dot, so separators use a bullet it does have. */
-    static String forFont(String key, CharSequence text) {
-        String value = text == null ? "" : text.toString();
-        return "jomhuria".equals(key) ? value.replace('\u00B7', '\u2022') : value;
+    static CharSequence forFont(String key, CharSequence text) {
+        if (text == null) return "";
+        if (!"jomhuria".equals(key) || text.toString().indexOf('\u00B7') < 0) return text; // Keeps colour spans.
+        return text.toString().replace('\u00B7', '\u2022');
     }
 
     static boolean card(SharedPreferences p, String key) { return p.getBoolean(CARD_PREFIX + key, true); }
@@ -143,7 +144,7 @@ final class ModernTheme {
 
     /** Jomhuria is drawn small for its size, so its text is enlarged to read like the others. */
     static float scale(String key) {
-        return "jomhuria".equals(key) ? 1.45f : "harmattan".equals(key) ? 1.08f : "ruqaa".equals(key) ? 0.88f : 1f;
+        return "jomhuria".equals(key) ? 1.45f : "harmattan".equals(key) ? 1.08f : "ruqaa".equals(key) ? 0.82f : 1f;
     }
 
     /**

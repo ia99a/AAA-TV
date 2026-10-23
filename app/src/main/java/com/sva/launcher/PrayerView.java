@@ -54,6 +54,8 @@ final class PrayerView extends FrameLayout {
     private final LinearLayout clockCard, nextCard, verseCard, band, top;
     private final View topDivider, bandRule;
     private int nextColumn = -1;
+    /** {TextView, size in sp, weight, original typeface} for every text on the page. */
+    private final java.util.ArrayList<Object[]> styled = new java.util.ArrayList<>();
     private final TextView[] columnName = new TextView[6], columnTime = new TextView[6], columnIqama = new TextView[6];
 
     private PrayerTimes.City city;
@@ -239,8 +241,36 @@ final class PrayerView extends FrameLayout {
     /** Switches between the plain dark page («بسيط ١») and glass cards over the background («بسيط ٢»). */
     void setGlass(boolean value) {
         verseText.setTypeface(ModernTheme.typeface(getContext(), ModernTheme.verseFont(preferences), 400));
-        if (glass == value) return;
-        glass = value;
+        if (glass != value) { glass = value; layoutGlass(); }
+        applyFonts();
+    }
+
+    /** «بسيط ٢» uses the home font (with its size setting) for every text here, except the verse. */
+    private void applyFonts() {
+        String font = ModernTheme.font(preferences);
+        float scale = ModernTheme.scale(font) * ModernTheme.textSizeFactor(preferences);
+        for (Object[] entry : styled) {
+            TextView view = (TextView) entry[0];
+            if (view == verseText) continue;
+            float sp = (Float) entry[1];
+            if (glass && view == time) sp = 58;
+            if (glass) {
+                // Big numbers keep to the card; small labels get a little larger to read from the sofa.
+                float factor = sp >= 30 ? Math.min(scale, 1.12f) : scale * (sp < 15 ? 1.12f : 1f);
+                view.setTypeface(ModernTheme.typeface(getContext(), font, (Integer) entry[2]));
+                view.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp * factor);
+            } else {
+                view.setTypeface((Typeface) entry[3]);
+                view.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
+            }
+        }
+        for (Button chip : new Button[]{cityButton, alertButton}) {
+            chip.setTypeface(glass ? ModernTheme.typeface(getContext(), font, 400) : Typeface.DEFAULT);
+            chip.setTextSize(TypedValue.COMPLEX_UNIT_SP, glass ? 14 * Math.min(scale, 1.2f) : 13);
+        }
+    }
+
+    private void layoutGlass() {
         setBackgroundColor(glass ? Color.TRANSPARENT : BG);
         // «بسيط ٢» follows the approved layout: two equal cards on top (next prayer on the right, the
         // clock with today's verse on the left), then six equal prayer cards, all centred on the page.
@@ -275,8 +305,7 @@ final class PrayerView extends FrameLayout {
         }
         verseCard.setBackground(null);
         verseCard.setPadding(0, 0, 0, 0);
-        // The big clock and the verse are a little smaller so the left card holds both.
-        time.setTextSize(TypedValue.COMPLEX_UNIT_SP, glass ? 58 : 72);
+        // The verse is a little smaller so the left card holds the clock and the verse.
         verseText.setTextSize(TypedValue.COMPLEX_UNIT_SP, glass ? 19 : 22);
         verseText.setMaxLines(glass ? 1 : 2);
         LinearLayout.LayoutParams ringParams = (LinearLayout.LayoutParams) iqamaRing.getLayoutParams();
@@ -534,6 +563,10 @@ final class PrayerView extends FrameLayout {
 
     private TextView text(Context context, float sp, int color, Typeface typeface) {
         TextView view = new TextView(context);
+        // Remember each text's size and weight so «بسيط ٢» can redraw it in the chosen font.
+        // The light faces are the clock, period, countdown and prayer times; the 30sp prayer name is regular.
+        boolean light = typeface != null && sp != 30;
+        styled.add(new Object[]{view, sp, light ? 300 : 400, typeface});
         view.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         view.setTextColor(color);
         view.setTextDirection(TEXT_DIRECTION_RTL);
