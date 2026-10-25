@@ -445,8 +445,10 @@ final class ModernHomeView extends FrameLayout {
             TextView first = text(11.2f, ink, 400); first.setText(line[0]);
             card.addView(first, new LinearLayout.LayoutParams(-1, -2));
             addGap(card, 2);
-            TextView second = text(11.2f, ink, 400); second.setGravity(Gravity.LEFT); second.setText(line[1]);
-            card.addView(second, new LinearLayout.LayoutParams(-1, -2));
+            TextView second = text(11.2f, ink, 400); second.setText(line[1]);
+            LinearLayout.LayoutParams secondParams = new LinearLayout.LayoutParams(-2, -2);
+            secondParams.gravity = Gravity.LEFT;
+            card.addView(second, secondParams);
         } else {
             TextView body = text(12, ink, 400);
             body.setText(ModernTheme.wisdomFor(today));
