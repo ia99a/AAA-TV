@@ -174,6 +174,15 @@ public final class FeatureChecksTest {
         assertNotNull(ModernTheme.poetryFor(LocalDate.of(1990, 1, 1)));
     }
 
+    @Test public void everyPoemAndVerseComesRound() {
+        java.util.HashSet<String> poems = new java.util.HashSet<>();
+        for (int i = 0; i < ModernTheme.POETRY.length; i++) poems.add(ModernTheme.poetryFor(LocalDate.of(2026, 10, 26).plusDays(i))[0]);
+        assertEquals(ModernTheme.POETRY.length, poems.size());
+        java.util.HashSet<String> verses = new java.util.HashSet<>();
+        for (int i = 0; i < DailyVerses.VERSES.length; i++) verses.add(DailyVerses.forEpochDay(LocalDate.of(2026, 10, 26).toEpochDay() + i)[1]);
+        assertEquals(DailyVerses.VERSES.length, verses.size());
+    }
+
     @Test public void bundledFontsAreOpenLicensedAndCoverTheText() throws Exception {
         for (String name : new String[]{"tajawal-300", "tajawal-400", "tajawal-500", "harmattan-400", "harmattan-500",
                 "jomhuria-400", "aref-ruqaa-400", "aref-ruqaa-700", "amiri-400", "naskh-400"}) {
