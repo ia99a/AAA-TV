@@ -438,18 +438,15 @@ final class ModernHomeView extends FrameLayout {
         card.addView(head, new LinearLayout.LayoutParams(-1, -2));
         addGap(card, 5);
         if (showPoetry) {
+            // The two halves of the line are staggered as in a printed diwan: the first from the right,
+            // the second ending at the left, each with the full width so no word is cut off.
             String[] line = ModernTheme.poetryFor(today);
-            LinearLayout verses = new LinearLayout(getContext());
-            TextView second = text(11.2f, ink, 400); second.setGravity(Gravity.LEFT); second.setText(line[1]);
+            label.setText("من الشعر  ·  " + line[2]);
             TextView first = text(11.2f, ink, 400); first.setText(line[0]);
-            verses.addView(second, new LinearLayout.LayoutParams(0, -2, 1));
-            LinearLayout.LayoutParams firstParams = new LinearLayout.LayoutParams(0, -2, 1);
-            firstParams.leftMargin = u(12);
-            verses.addView(first, firstParams);
-            card.addView(verses, new LinearLayout.LayoutParams(-1, -2));
-            addGap(card, 3);
-            TextView by = text(8, soft, 400); by.setText(line[2]);
-            card.addView(by, new LinearLayout.LayoutParams(-1, -2));
+            card.addView(first, new LinearLayout.LayoutParams(-1, -2));
+            addGap(card, 2);
+            TextView second = text(11.2f, ink, 400); second.setGravity(Gravity.LEFT); second.setText(line[1]);
+            card.addView(second, new LinearLayout.LayoutParams(-1, -2));
         } else {
             TextView body = text(12, ink, 400);
             body.setText(ModernTheme.wisdomFor(today));

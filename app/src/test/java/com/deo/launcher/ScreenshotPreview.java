@@ -113,6 +113,11 @@ public final class ScreenshotPreview {
         shoot("harmattan", null, tab("TAB_EVENTS"), "calendar-march-2027", false, java.time.YearMonth.of(2027, 3));
     }
     @Test public void quranGlass() throws Exception { shoot("tajawal", null, tab("TAB_QURAN"), "quran", false); }
+    @Test public void homePoetry() throws Exception {
+        org.robolectric.RuntimeEnvironment.getApplication().getSharedPreferences("launcher", 0).edit()
+                .putBoolean(ModernTheme.CARD_PREFIX + "wisdom", false).commit();
+        shoot("tajawal", null, tab("TAB_HOME"), "home-poetry", false);
+    }
     @Test public void homeTajawal() throws Exception { shoot("tajawal", null, tab("TAB_HOME"), "home-tajawal", false); }
     @Test public void homeFixed() throws Exception {
         shoot("tajawal", "gallery/nature/mountain-lake.jpg", tab("TAB_HOME"), "home-fixed", false);
