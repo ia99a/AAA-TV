@@ -52,6 +52,15 @@ jobs:
           gh release delete tv-latest --yes --cleanup-tag || true
           gh release create tv-latest aaa-tv.apk sva-tv.apk --target "$GITHUB_SHA" \
             --title "AAA TV (latest)" --notes "Built from ${GITHUB_SHA::7}" --prerelease
+      - name: Check Quran audio links
+        continue-on-error: true
+        run: |
+          for u in https://server8.mp3quran.net/ayyub/001.mp3 https://cdn.mp3quran.net/audio/muhammad-ayyub/r1/001.mp3 \
+                   https://cdn.mp3quran.net/audio/mohammad-ayyub/r1/001.mp3 https://cdn.mp3quran.net/audio/ayyub/r1/001.mp3 \
+                   https://server8.mp3quran.net/ayyub/114.mp3 https://cdn.mp3quran.net/audio/mishary-alafasy/r1/001.mp3; do
+            echo "AUDIOCHECK $(curl -s -o /dev/null -w '%{http_code} %{content_type} %{size_download}' -r 0-1023 -L "$u") $u"
+          done
+          curl -s "https://mp3quran.net/api/v3/reciters?language=ar" | python3 -c "import json,sys; d=json.load(sys.stdin); [print('RECITER', r['name'], m['name'], m['surah_total'], m['server']) for r in d['reciters'] if 'أيوب' in r['name'] for m in r['moshaf']]" || true
       - name: Draw review screenshots
         continue-on-error: true
         run: ./gradlew --no-daemon testReleaseUnitTest --tests 'com.sva.launcher.ScreenshotPreview' -Pscreens=true
