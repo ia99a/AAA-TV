@@ -245,6 +245,10 @@ final class QuranView extends FrameLayout {
         final String asset = fixedPicture;
         // A fixed picture gets a deeper veil than the dark pattern, so the card stays easy to read.
         glassVeil.setBackgroundColor(asset == null ? 0x59000000 : 0x80000000);
+        // Over a photo the card itself is nearly solid, so the surah name never sits on busy detail.
+        GradientDrawable card = rounded(asset == null ? 0xC0141820 : 0xEB141820, dp(24));
+        card.setStroke(Math.max(1, dp(1)), 0x22FFFFFF);
+        column.setBackground(card);
         new Thread(() -> {
             android.graphics.Bitmap bitmap = null;
             try {
