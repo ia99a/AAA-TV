@@ -6,12 +6,12 @@ import java.util.regex.Pattern;
 
 /**
  * «الخلفية الثابتة» in «بسيط ٢»: one picture from «الخلفيات», chosen with a long press on OK, shown
- * still behind «آمر», the prayer page and «تاريخك», each of which can be switched off on its own.
+ * still behind «آمر», the prayer page, «تاريخك» and the Quran player, each of which can be switched off on its own.
  */
 final class FixedBackground {
     static final String PREF_PICTURE = "fixedPicture", PREF_ON_PREFIX = "fixedOn_";
-    static final String[] SCREEN_KEYS = {"home", "prayer", "events"};
-    static final String[] SCREEN_NAMES = {"«آمر»", "الصلاة", "تاريخك"};
+    static final String[] SCREEN_KEYS = {"home", "prayer", "events", "quran"};
+    static final String[] SCREEN_NAMES = {"«آمر»", "الصلاة", "تاريخك", "القرآن الكريم"};
     /** Only pictures bundled in the app: a known folder and a plain file name, nothing else. */
     private static final Pattern ASSET = Pattern.compile("(frames|gallery/(nature|drawn|aerial|space|aviation))/[a-z0-9][a-z0-9-]{0,60}\\.jpg");
 

@@ -148,6 +148,8 @@ final class QuranData {
             {"عبدالباسط عبدالصمد", "https://cdn.mp3quran.net/audio/abdulbasit-abdulsamad/r3/"},
             {"محمد صديق المنشاوي", "https://cdn.mp3quran.net/audio/muhammad-minshawi/r1/"},
             {"محمود خليل الحصري", "https://cdn.mp3quran.net/audio/mahmoud-husary/r1/"},
+            // New reciters go at the end: the saved choice is a position in this list.
+            {"محمد أيوب", "https://cdn.mp3quran.net/audio/muhammad-ayyub/r1/"},
     };
 
     private QuranData() { }

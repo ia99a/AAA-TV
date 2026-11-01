@@ -48,7 +48,26 @@ final class PrayerTimes {
     private PrayerTimes() { }
 
     /** Returns the six times (Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha) as local date-times. */
+    /** The home card, the iqama pill and the prayer page ask every second; the day's times are kept. */
+    private static final java.util.LinkedHashMap<String, LocalDateTime[]> CACHE =
+            new java.util.LinkedHashMap<String, LocalDateTime[]>(16, 0.75f, true) {
+                @Override protected boolean removeEldestEntry(java.util.Map.Entry<String, LocalDateTime[]> eldest) {
+                    return size() > 12;
+                }
+            };
+
     static LocalDateTime[] forDay(LocalDate day, double lat, double lng, double timezoneHours) {
+        String key = day + "|" + lat + "|" + lng + "|" + timezoneHours;
+        synchronized (CACHE) {
+            LocalDateTime[] cached = CACHE.get(key);
+            if (cached != null) return cached.clone();
+        }
+        LocalDateTime[] computed = compute(day, lat, lng, timezoneHours);
+        synchronized (CACHE) { CACHE.put(key, computed.clone()); }
+        return computed;
+    }
+
+    private static LocalDateTime[] compute(LocalDate day, double lat, double lng, double timezoneHours) {
         double[] hours = hours(day, lat, lng, timezoneHours, isRamadan(day));
         LocalDateTime midnight = day.atStartOfDay();
         LocalDateTime[] result = new LocalDateTime[hours.length];

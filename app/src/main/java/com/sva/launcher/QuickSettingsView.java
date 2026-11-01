@@ -66,7 +66,7 @@ final class QuickSettingsView extends FrameLayout {
 
     // Options.
     private static final int THEME = 0, MODE = 1, FONT = 2, VERSE_FONT = 3, TEXT_SIZE = 4, FONT_SAMPLE = 5,
-            MOOD = 6, COLOUR = 7, FIXED = 8, FIXED_SCREEN = 9, FIXED_CLEAR = 12, GALLERY_SET = 13, GALLERY = 14,
+            MOOD = 6, COLOUR = 7, FIXED = 8, FIXED_SCREEN = 9, FIXED_CLEAR = 16, GALLERY_SET = 17, GALLERY = 18,
             CARD = 20, APPS = 40, TABS = 41, WEATHER = 42, PRAYER_CITY = 43, ALERTS = 44, KIOSK = 45, ABOUT = 46;
     private static final int SEG = 0, SWITCH = 1, VALUE = 2, GO = 3, ACTION = 4, TILES = 5, INFO = 6, PICK = 7;
     private static final int PAGE_OPTIONS = 0, PAGE_APPS = 1, PAGE_TABS = 2;
@@ -507,7 +507,7 @@ final class QuickSettingsView extends FrameLayout {
 
     private String name(int id) {
         if (id >= CARD && id < CARD + ModernTheme.CARD_KEYS.length) return ModernTheme.CARD_NAMES[id - CARD];
-        if (id >= FIXED_SCREEN && id < FIXED_SCREEN + 3) return "على " + FixedBackground.SCREEN_NAMES[id - FIXED_SCREEN];
+        if (id >= FIXED_SCREEN && id < FIXED_SCREEN + FixedBackground.SCREEN_KEYS.length) return "على " + FixedBackground.SCREEN_NAMES[id - FIXED_SCREEN];
         switch (id) {
             case THEME: return "الثيم";
             case MODE: return "الوضع";
@@ -575,7 +575,7 @@ final class QuickSettingsView extends FrameLayout {
 
     private boolean switchOn(int id) {
         if (id >= CARD && id < CARD + ModernTheme.CARD_KEYS.length) return ModernTheme.card(preferences, ModernTheme.CARD_KEYS[id - CARD]);
-        if (id >= FIXED_SCREEN && id < FIXED_SCREEN + 3) return FixedBackground.on(preferences, FixedBackground.SCREEN_KEYS[id - FIXED_SCREEN]);
+        if (id >= FIXED_SCREEN && id < FIXED_SCREEN + FixedBackground.SCREEN_KEYS.length) return FixedBackground.on(preferences, FixedBackground.SCREEN_KEYS[id - FIXED_SCREEN]);
         if (id == ALERTS) return preferences.getBoolean(PrayerAlerts.PREF_ENABLED, false);
         if (id == KIOSK) return preferences.getBoolean(LauncherOverrideService.KIOSK, true);
         return false;
@@ -597,7 +597,7 @@ final class QuickSettingsView extends FrameLayout {
             String key = ModernTheme.CARD_KEYS[id - CARD];
             preferences.edit().putBoolean(ModernTheme.CARD_PREFIX + key, !ModernTheme.card(preferences, key)).apply();
             listener.onHomeThemeChanged();
-        } else if (id >= FIXED_SCREEN && id < FIXED_SCREEN + 3) {
+        } else if (id >= FIXED_SCREEN && id < FIXED_SCREEN + FixedBackground.SCREEN_KEYS.length) {
             FixedBackground.toggle(preferences, FixedBackground.SCREEN_KEYS[id - FIXED_SCREEN]);
             listener.onFixedBackgroundChanged();
         } else switch (id) {

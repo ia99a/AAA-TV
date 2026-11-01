@@ -1774,6 +1774,9 @@ public final class MainActivity extends Activity {
 
     /** Shows or hides the fixed background for the current tab, loading the picture when it changed. */
     private void updateFixedBackground() {
+        // The Quran player draws its own backdrop; it takes the fixed picture when that is switched on for it.
+        if (quranView != null) quranView.setFixedPicture(FixedBackground.showsOn(preferences, "quran")
+                ? FixedBackground.picture(preferences) : null);
         if (fixedLayer == null) return;
         String key = screenKey(activeTab);
         boolean show = FixedBackground.showsOn(preferences, key);

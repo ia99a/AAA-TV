@@ -56,7 +56,9 @@ final class QuranView extends FrameLayout {
     private boolean glass;
     private android.widget.ImageView glassBack;
     private View glassVeil, emblem;
-    private boolean glassLoading;
+    /** What the glass backdrop shows: a fixed picture from «الخلفيات», or null for the royal pattern. */
+    private String fixedPicture, loadedBackdrop;
+    private int backdropGeneration;
     private int surah, reciter, colorIndex;
     private boolean repeat;
 
@@ -224,23 +226,42 @@ final class QuranView extends FrameLayout {
         column.setLayoutParams(params);
     }
 
+    /** Shows a fixed background picture behind the glass card (null brings back the royal pattern). */
+    void setFixedPicture(String asset) {
+        fixedPicture = asset;
+        if (glass) loadPattern();
+    }
+
     private void loadPattern() {
-        if (glassBack.getDrawable() != null || glassLoading) return;
-        glassLoading = true;
-        final int width = Math.max(1, getResources().getDisplayMetrics().widthPixels / 2);
+        final String wanted = fixedPicture == null ? "pattern" : fixedPicture;
+        if (wanted.equals(loadedBackdrop)) return;
+        loadedBackdrop = wanted;
+        final int generation = ++backdropGeneration;
+        final int screen = getResources().getDisplayMetrics().widthPixels;
+        final int width = Math.max(1, screen / 2);
         final int height = Math.max(1, getResources().getDisplayMetrics().heightPixels / 2);
         int chosen = preferences.getInt(CalmWallpapers.PREF, CalmWallpapers.DEFAULT);
         final int index = CalmWallpapers.isDamask(chosen) ? chosen : CalmWallpapers.DEFAULT;
+        final String asset = fixedPicture;
+        // A fixed picture gets a deeper veil than the dark pattern, so the card stays easy to read.
+        glassVeil.setBackgroundColor(asset == null ? 0x59000000 : 0x80000000);
         new Thread(() -> {
             android.graphics.Bitmap bitmap = null;
-            try { bitmap = CalmWallpapers.render(getContext(), index, width, height); }
-            catch (RuntimeException | OutOfMemoryError ignored) { }
+            try {
+                if (asset == null) bitmap = CalmWallpapers.render(getContext(), index, width, height);
+                else try (java.io.InputStream in = getContext().getAssets().open(asset)) {
+                    android.graphics.BitmapFactory.Options options = new android.graphics.BitmapFactory.Options();
+                    options.inSampleSize = screen <= 1920 ? 2 : 1;
+                    bitmap = android.graphics.BitmapFactory.decodeStream(in, null, options);
+                }
+            } catch (Exception | OutOfMemoryError ignored) { }
             final android.graphics.Bitmap loaded = bitmap;
             handler.post(() -> {
-                glassLoading = false;
-                if (loaded != null) glassBack.setImageBitmap(loaded);
+                if (generation != backdropGeneration) { if (loaded != null) loaded.recycle(); return; }
+                if (loaded == null) { loadedBackdrop = null; return; }
+                glassBack.setImageBitmap(loaded);
             });
-        }, "quran-pattern").start();
+        }, "quran-backdrop").start();
     }
 
     /** A thin gold ring holding a pointed arch, at the top of the glass card. */

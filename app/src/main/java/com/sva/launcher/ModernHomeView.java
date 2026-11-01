@@ -17,6 +17,7 @@ import android.text.style.RelativeSizeSpan;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -497,14 +498,27 @@ final class ModernHomeView extends FrameLayout {
             if (!firstTime) {
                 // Day change, and the wisdom/poetry turn, are picked up once a minute.
                 boolean both = ModernTheme.card(preferences, "wisdom") && ModernTheme.card(preferences, "poetry");
-                if (both || (now.getHour() == 0 && now.getMinute() == 0)) { buildCards(); }
+                // A new day redraws every card; otherwise only the quote card turns, the rest stays as is.
+                if (now.getHour() == 0 && now.getMinute() == 0) buildCards();
+                else if (both) swapQuote(now.toLocalDate());
             }
         }
-        if (clockText != null) {
-            clockText.setText(ArabicFormat.clock(now));
-            clockPeriod.setText(ArabicFormat.period(now));
-        }
+        // Only touch the text when it changes: a new text re-measures the whole screen.
+        setIfChanged(clockText, ArabicFormat.clock(now));
+        setIfChanged(clockPeriod, ArabicFormat.period(now));
         if (prayerRing != null) updatePrayer(now);
+    }
+
+    private void swapQuote(LocalDate today) {
+        View old = findQuote();
+        if (old == null) return;
+        int index = cards.indexOfChild(old);
+        ViewGroup.LayoutParams params = old.getLayoutParams();
+        View fresh = quoteCard(today);
+        if (fresh == null) return;
+        fresh.setBackground(old.getBackground());
+        cards.removeViewAt(index);
+        cards.addView(fresh, index, params);
     }
 
     private View findQuote() {
