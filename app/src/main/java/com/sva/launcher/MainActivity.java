@@ -1928,6 +1928,24 @@ public final class MainActivity extends Activity {
         return v;
     }
 
+    private Drawable tileShape(int color, int strokeColor, int strokeWidth) {
+        return roundedShape(color, strokeColor, strokeWidth, 18);
+    }
+
+    private void styleFocusableTile(View tile) {
+        StateListDrawable states = new Motion.States();
+        states.addState(new int[]{android.R.attr.state_focused}, tileShape(LiquidTheme.raisedSurface(this), LiquidTheme.accent(this), 2));
+        states.addState(new int[]{android.R.attr.state_pressed}, tileShape(LiquidTheme.raisedSurface(this), LiquidTheme.accent(this), 2));
+        states.addState(new int[]{}, tileShape(LiquidTheme.surface(this), LiquidTheme.border(this), 1));
+        tile.setBackground(states);
+        tile.setFocusable(true);
+        tile.setFocusableInTouchMode(false);
+        tile.setClickable(true);
+        tile.setOnFocusChangeListener(LiquidTheme::animateFocus);
+        Motion.interaction(tile, false);
+    }
+
+
     private Button actionButton(String text) {
         Button b = new Button(this);
         b.setText(text);
@@ -2026,7 +2044,6 @@ public final class MainActivity extends Activity {
         editor.apply();
         if (changed) weatherForecast = null;
         weatherRefreshedThisLaunch = true; renderWeather(); refreshWeather(location);
-        if (settingsScreen != null) settingsScreen.renderSection();
     }
 
     private List<PublicCalendarRepository.Event> cachedCalendarEvents() {
@@ -2353,7 +2370,6 @@ public final class MainActivity extends Activity {
         if (screenActive) showNextBackgroundPhoto();
     }
 
-    private boolean moodGalleryActive;
     private boolean moodGalleryActive;
 
     /** Applies the chosen background mood. */
