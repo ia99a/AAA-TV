@@ -136,4 +136,13 @@ public final class SecurityChecksTest {
                 assertTrue(file.getName() + " PendingIntents must be immutable", source.contains("FLAG_IMMUTABLE"));
         }
     }
+
+    @Test public void updateUsesOnlyTheProjectsHttpsLinksAndSafeVersionNames() {
+        for (String url : new String[]{AppUpdate.APK_URL, AppUpdate.VERSION_URL}) {
+            org.junit.Assert.assertTrue(url, url.startsWith("https://github.com/ia99a/AAA-TV/releases/download/tv-latest/"));
+        }
+        org.junit.Assert.assertEquals("4.2.60", AppUpdate.clean("4.2.60"));
+        for (String bad : new String[]{"4.2.60<script>", "‮4.2", "", "x", "4.2.60 \n حدّث الآن", null})
+            org.junit.Assert.assertEquals(String.valueOf(bad), "", AppUpdate.clean(bad));
+    }
 }

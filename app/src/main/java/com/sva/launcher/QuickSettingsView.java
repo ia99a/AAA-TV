@@ -67,7 +67,7 @@ final class QuickSettingsView extends FrameLayout {
     // Options.
     private static final int THEME = 0, MODE = 1, FONT = 2, VERSE_FONT = 3, TEXT_SIZE = 4, FONT_SAMPLE = 5,
             MOOD = 6, COLOUR = 7, FIXED = 8, FIXED_SCREEN = 9, FIXED_CLEAR = 16, GALLERY_SET = 17, GALLERY = 18,
-            CARD = 20, APPS = 40, TABS = 41, WEATHER = 42, PRAYER_CITY = 43, ALERTS = 44, KIOSK = 45, ABOUT = 46;
+            CARD = 20, APPS = 40, TABS = 41, WEATHER = 42, PRAYER_CITY = 43, ALERTS = 44, KIOSK = 45, ABOUT = 46, UPDATE = 47;
     private static final int SEG = 0, SWITCH = 1, VALUE = 2, GO = 3, ACTION = 4, TILES = 5, INFO = 6, PICK = 7;
     private static final int PAGE_OPTIONS = 0, PAGE_APPS = 1, PAGE_TABS = 2;
 
@@ -305,7 +305,9 @@ final class QuickSettingsView extends FrameLayout {
             default:
                 subtitle.setText(" ");
                 add(KIOSK, SWITCH);
+                add(UPDATE, ACTION);
                 add(ABOUT, INFO);
+                checkForUpdate();
                 break;
         }
         options.removeAllViews();
@@ -526,6 +528,7 @@ final class QuickSettingsView extends FrameLayout {
             case ALERTS: return "تنبيه الأذان والإقامة";
             case KIOSK: return "المشغّل دائم على الشاشة";
             case ABOUT: return "عن التطبيق";
+            case UPDATE: return latestCode > currentCode() ? "تحديث التطبيق  ·  متوفر" : "تحديث التطبيق";
             default: return "";
         }
     }
@@ -553,6 +556,12 @@ final class QuickSettingsView extends FrameLayout {
             case ALERTS: return "بطاقة صغيرة فوق التطبيقات عند الأذان والإقامة";
             case KIOSK: return "يرجع «آمر» بعد إطفاء الشاشة وتشغيلها";
             case ABOUT: return "AAA TV  ·  الإصدار " + version();
+            case UPDATE:
+                if (checkingUpdate) return "يتحقق من وجود إصدار أحدث…";
+                if (latestCode < 0) return "تعذّر التحقق الآن  ·  OK للتحميل عبر Downloader";
+                if (latestCode > currentCode()) return "الإصدار " + ArabicFormat.digits(latestName)
+                        + " جاهز  ·  OK للتحميل عبر Downloader";
+                return latestCode == 0 ? "OK للتحميل عبر Downloader" : "لديك آخر إصدار  ·  OK لإعادة التحميل عبر Downloader";
             default: return "";
         }
     }
@@ -579,6 +588,35 @@ final class QuickSettingsView extends FrameLayout {
         if (id == ALERTS) return preferences.getBoolean(PrayerAlerts.PREF_ENABLED, false);
         if (id == KIOSK) return preferences.getBoolean(LauncherOverrideService.KIOSK, true);
         return false;
+    }
+
+    /** -1 unreadable, 0 not checked yet, otherwise the published version code. */
+    private int latestCode;
+    private String latestName = "";
+    private boolean checkingUpdate;
+    private long lastUpdateCheck;
+
+    /** Asks for the published version at most every ten minutes, while the System page is open. */
+    private void checkForUpdate() {
+        long now = System.currentTimeMillis();
+        if (checkingUpdate || now - lastUpdateCheck < 10 * 60_000L) return;
+        checkingUpdate = true;
+        lastUpdateCheck = now;
+        AppUpdate.checkLatest((code, name) -> {
+            checkingUpdate = false;
+            latestCode = code;
+            latestName = name;
+            if (isOpen() && category == SYSTEM && page == PAGE_OPTIONS) render();
+        });
+    }
+
+    @SuppressWarnings("deprecation")
+    private int currentCode() {
+        try {
+            return getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), 0).versionCode;
+        } catch (Exception unknown) {
+            return Integer.MAX_VALUE;
+        }
     }
 
     private String version() {
@@ -678,6 +716,10 @@ final class QuickSettingsView extends FrameLayout {
                 listener.onPrayerSettingsChanged(enabled);
                 break;
             }
+            case UPDATE:
+                close();
+                AppUpdate.openDownloader(getContext());
+                return;
             case KIOSK: {
                 boolean enabled = !preferences.getBoolean(LauncherOverrideService.KIOSK, true);
                 preferences.edit().putBoolean(LauncherOverrideService.KIOSK, enabled).apply();

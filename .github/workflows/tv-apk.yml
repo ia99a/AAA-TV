@@ -49,8 +49,11 @@ jobs:
         run: |
           cp app/build/outputs/apk/release/app-release.apk aaa-tv.apk
           cp aaa-tv.apk sva-tv.apk
+          # The app's «تحديث التطبيق» reads this to tell whether a newer version is out.
+          printf '{"versionCode": %d, "versionName": "4.2.%d"}\n' $((100 + GITHUB_RUN_NUMBER)) "$GITHUB_RUN_NUMBER" > version.json
+          cat version.json
           gh release delete tv-latest --yes --cleanup-tag || true
-          gh release create tv-latest aaa-tv.apk sva-tv.apk --target "$GITHUB_SHA" \
+          gh release create tv-latest aaa-tv.apk sva-tv.apk version.json --target "$GITHUB_SHA" \
             --title "AAA TV (latest)" --notes "Built from ${GITHUB_SHA::7}" --prerelease
       - name: Check every reciter's first and last surah
         continue-on-error: true
