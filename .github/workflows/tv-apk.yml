@@ -60,7 +60,10 @@ jobs:
       - name: List Haram and Nabawi imams on mp3quran
         continue-on-error: true
         run: |
-          curl -s "https://mp3quran.net/api/v3/reciters?language=ar" -o reciters.json
+          for u in "https://mp3quran.net/api/v3/reciters?language=ar" "https://www.mp3quran.net/api/v3/reciters?language=ar" "https://mp3quran.net/api/v3/reciters"; do
+            curl -sL -A "Mozilla/5.0" "$u" -o reciters.json; echo "TRY $u $(head -c 120 reciters.json | tr -d '\n')"
+            python3 -c "import json; json.load(open('reciters.json'))" 2>/dev/null && break
+          done
           python3 -c "
           import json
           d=json.load(open('reciters.json'))
