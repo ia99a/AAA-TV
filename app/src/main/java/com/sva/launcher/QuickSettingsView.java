@@ -530,7 +530,7 @@ final class QuickSettingsView extends FrameLayout {
 
     private String detail(int id) {
         switch (id) {
-            case MODE: return "للثيم «بسيط ٢»";
+            case MODE: return "ألوان داكنة ليلًا أو فاتحة نهارًا";
             case VERSE_FONT: return "في «آمر» وصفحة الصلاة";
             case FIXED: {
                 String asset = FixedBackground.picture(preferences);
