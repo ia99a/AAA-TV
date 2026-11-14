@@ -44,7 +44,8 @@ final class ModernTheme {
 
     private ModernTheme() { }
 
-    static int theme(SharedPreferences p) { return p.getInt(PREF_THEME, SIMPLE_2) == SIMPLE_1 ? SIMPLE_1 : SIMPLE_2; }
+    /** «بسيط ١» was retired: every install, including ones that had chosen it, now uses «بسيط ٢». */
+    static int theme(SharedPreferences p) { return SIMPLE_2; }
     static boolean modern(SharedPreferences p) { return theme(p) == SIMPLE_2; }
     static boolean day(SharedPreferences p) { return "day".equals(p.getString(PREF_MODE, "night")); }
 

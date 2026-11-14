@@ -74,10 +74,7 @@ public final class ThemeSettingsSecurityTest {
         }
         assertTrue(FixedBackground.set(p, "gallery/nature/mountain-lake.jpg"));
         assertEquals("gallery/nature/mountain-lake.jpg", FixedBackground.picture(p));
-        // Only «بسيط ٢» shows it, and each screen can be switched off.
-        p.values.put(ModernTheme.PREF_THEME, ModernTheme.SIMPLE_1);
-        assertFalse(FixedBackground.showsOn(p, "home"));
-        p.values.put(ModernTheme.PREF_THEME, ModernTheme.SIMPLE_2);
+        // Each screen can be switched off on its own.
         assertTrue(FixedBackground.showsOn(p, "home"));
         FixedBackground.toggle(p, "prayer");
         assertFalse(FixedBackground.showsOn(p, "prayer"));
@@ -92,12 +89,12 @@ public final class ThemeSettingsSecurityTest {
         assertEquals(java.util.Arrays.asList("quran", "prayer", "haram"), tabs);
     }
 
-    @Test public void themeIsOneOfTheTwo() {
+    @Test public void onlySimple2Remains() {
         Prefs p = new Prefs();
-        p.values.put(ModernTheme.PREF_THEME, 99);
-        assertEquals(ModernTheme.SIMPLE_2, ModernTheme.theme(p));
-        p.values.put(ModernTheme.PREF_THEME, 1);
-        assertEquals(ModernTheme.SIMPLE_1, ModernTheme.theme(p));
+        for (int saved : new int[]{1, 2, 99}) {
+            p.values.put(ModernTheme.PREF_THEME, saved);
+            assertEquals(ModernTheme.SIMPLE_2, ModernTheme.theme(p));
+        }
     }
 
     @Test public void galleryCategoryCannotPointOutsideTheBundledFolders() {

@@ -265,9 +265,8 @@ final class QuickSettingsView extends FrameLayout {
         boolean modern = ModernTheme.modern(preferences);
         switch (category) {
             case LOOK:
-                subtitle.setText("الثيم وطريقة العرض");
-                add(THEME, SEG);
-                if (modern) add(MODE, SEG);
+                subtitle.setText("طريقة العرض");
+                add(MODE, SEG);
                 break;
             case FONTS:
                 subtitle.setText(modern ? "يتغيّر النص في «آمر» مباشرة" : "خط الواجهة وحجمه يظهران في ثيم «بسيط ٢»");
