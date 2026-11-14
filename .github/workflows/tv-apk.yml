@@ -57,6 +57,19 @@ jobs:
           gh release delete tv-latest --yes --cleanup-tag || true
           gh release create tv-latest aaa-tv.apk sva-tv.apk version.json --target "$GITHUB_SHA" \
             --title "AAA TV (latest)" --notes "Built from ${GITHUB_SHA::7}" --prerelease
+      - name: List Haram and Nabawi imams on mp3quran
+        continue-on-error: true
+        run: |
+          curl -s "https://mp3quran.net/api/v3/reciters?language=ar" -o reciters.json
+          python3 -c "
+          import json
+          d=json.load(open('reciters.json'))
+          keys=['الجهني','بليلة','غزاوي','الشمسان','بن حميد','الحذيفي','البدير','البعيجان','طالب','الثبيتي','آل الشيخ','المهنا','القاسم','الكلباني','الخياط','السبيل','السديس','الشريم','المعيقلي','الدوسري','جابر','أيوب','الحذيفى','عبدالباري','حسين','خالد','الطالب','المطرود','الشاطري','الخليفي']
+          for r in d['reciters']:
+              if any(k in r['name'] for k in keys):
+                  for m in r['moshaf']:
+                      print('IMAM', r['name'], '|', m['name'], '|', m['surah_total'], '|', m['server'])
+          "
       - name: Check every reciter's first and last surah
         continue-on-error: true
         run: |
