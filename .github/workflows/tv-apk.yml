@@ -57,23 +57,6 @@ jobs:
           gh release delete tv-latest --yes --cleanup-tag || true
           gh release create tv-latest aaa-tv.apk sva-tv.apk version.json --target "$GITHUB_SHA" \
             --title "AAA TV (latest)" --notes "Built from ${GITHUB_SHA::7}" --prerelease
-      - name: Find a reciter on mp3quran
-        continue-on-error: true
-        run: |
-          curl -sL -A "Mozilla/5.0" "https://mp3quran.net/api/v3/reciters?language=ar" -o reciters.json
-          python3 -c "
-          import json
-          for r in json.load(open('reciters.json'))['reciters']:
-              if any(k in r['name'] for k in ['بندر','بليل','بليله','بليلة']):
-                  for m in r['moshaf']: print('FOUND', r['name'], '|', m['name'], '|', m['surah_total'], '|', m['server'])
-          "
-          curl -sL -A "Mozilla/5.0" "https://mp3quran.net/api/v3/reciters?language=eng" -o reciters-en.json
-          python3 -c "
-          import json
-          for r in json.load(open('reciters-en.json'))['reciters']:
-              if 'alee' in r['name'].lower() or 'bandar' in r['name'].lower():
-                  for m in r['moshaf']: print('FOUND', r['name'], '|', m['name'], '|', m['surah_total'], '|', m['server'])
-          "
       - name: Check every reciter's first and last surah
         continue-on-error: true
         run: |
