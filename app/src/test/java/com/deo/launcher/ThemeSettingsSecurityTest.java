@@ -72,14 +72,18 @@ public final class ThemeSettingsSecurityTest {
             p.values.put(FixedBackground.PREF_PICTURE, bad);
             assertEquals(bad, null, FixedBackground.picture(p));
         }
-        assertTrue(FixedBackground.set(p, "gallery/nature/mountain-lake.jpg"));
-        assertEquals("gallery/nature/mountain-lake.jpg", FixedBackground.picture(p));
+        assertTrue(FixedBackground.set(p, "gallery/nature/mountain-lake.webp"));
+        assertEquals("gallery/nature/mountain-lake.webp", FixedBackground.picture(p));
+        // A choice saved while the pictures were JPEG still finds its picture.
+        p.values.put(FixedBackground.PREF_PICTURE, "gallery/nature/mountain-lake.jpg");
+        assertEquals("gallery/nature/mountain-lake.webp", FixedBackground.picture(p));
+        FixedBackground.set(p, "gallery/nature/mountain-lake.webp");
         // Each screen can be switched off on its own.
         assertTrue(FixedBackground.showsOn(p, "home"));
         FixedBackground.toggle(p, "prayer");
         assertFalse(FixedBackground.showsOn(p, "prayer"));
         assertFalse(FixedBackground.showsOn(p, null));
-        assertTrue(FixedBackground.label("gallery/aviation/paper-plane.jpg").startsWith("طيران"));
+        assertTrue(FixedBackground.label("gallery/aviation/paper-plane.webp").startsWith("طيران"));
     }
 
     @Test public void barTabsAcceptOnlyKnownTabs() {

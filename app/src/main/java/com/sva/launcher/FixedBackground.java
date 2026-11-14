@@ -13,7 +13,7 @@ final class FixedBackground {
     static final String[] SCREEN_KEYS = {"home", "prayer", "events", "quran"};
     static final String[] SCREEN_NAMES = {"«آمر»", "الصلاة", "تاريخك", "القرآن الكريم"};
     /** Only pictures bundled in the app: a known folder and a plain file name, nothing else. */
-    private static final Pattern ASSET = Pattern.compile("(frames|gallery/(nature|drawn|aerial|space|aviation))/[a-z0-9][a-z0-9-]{0,60}\\.jpg");
+    private static final Pattern ASSET = Pattern.compile("(frames|gallery/(nature|drawn|aerial|space|aviation))/[a-z0-9][a-z0-9-]{0,60}\\.webp");
 
     private FixedBackground() { }
 
@@ -22,6 +22,8 @@ final class FixedBackground {
     /** The chosen picture's asset path, or null when none is set (or the saved value is not one of ours). */
     static String picture(SharedPreferences p) {
         String asset = p.getString(PREF_PICTURE, null);
+        // The pictures were JPEG before they became WebP; a choice saved then still points at the same picture.
+        if (asset != null && asset.endsWith(".jpg")) asset = asset.substring(0, asset.length() - 4) + ".webp";
         return valid(asset) ? asset : null;
     }
 

@@ -54,7 +54,7 @@ final class CalmWallpapers {
 
     /** Decodes a 4K damask picture at about the screen's size and crops it to fill width × height. */
     private static Bitmap damask(Context context, String key, int width, int height) {
-        String asset = "damask/" + key + ".jpg";
+        String asset = "damask/" + key + ".webp";
         try (java.io.InputStream probe = context.getAssets().open(asset)) {
             BitmapFactory.Options bounds = new BitmapFactory.Options();
             bounds.inJustDecodeBounds = true;

@@ -100,11 +100,11 @@ public final class ScreenshotPreview {
     @Test public void prayerHarmattan() throws Exception { shoot("harmattan", null, tab("TAB_PRAYER"), "prayer-harmattan", false); }
     @Test public void prayerJomhuria() throws Exception { shoot("jomhuria", null, tab("TAB_PRAYER"), "prayer-jomhuria", false); }
     @Test public void prayerRuqaaFixed() throws Exception {
-        shoot("ruqaa", "gallery/nature/mountain-lake.jpg", tab("TAB_PRAYER"), "prayer-ruqaa-fixed", false);
+        shoot("ruqaa", "gallery/nature/mountain-lake.webp", tab("TAB_PRAYER"), "prayer-ruqaa-fixed", false);
     }
     @Test public void calendarTajawal() throws Exception { shoot("tajawal", null, tab("TAB_EVENTS"), "calendar-tajawal", false); }
     @Test public void calendarHarmattanFixed() throws Exception {
-        shoot("harmattan", "gallery/nature/mountain-lake.jpg", tab("TAB_EVENTS"), "calendar-harmattan-fixed", false);
+        shoot("harmattan", "gallery/nature/mountain-lake.webp", tab("TAB_EVENTS"), "calendar-harmattan-fixed", false);
     }
     @Test public void calendarMayBusy() throws Exception {
         shoot("tajawal", null, tab("TAB_EVENTS"), "calendar-may-2027", false, java.time.YearMonth.of(2027, 5));
@@ -113,7 +113,7 @@ public final class ScreenshotPreview {
         shoot("harmattan", null, tab("TAB_EVENTS"), "calendar-march-2027", false, java.time.YearMonth.of(2027, 3));
     }
     @Test public void quranFixed() throws Exception {
-        shoot("tajawal", "gallery/aviation/biplane-fjord.jpg", tab("TAB_QURAN"), "quran-fixed", false);
+        shoot("tajawal", "gallery/aviation/biplane-fjord.webp", tab("TAB_QURAN"), "quran-fixed", false);
     }
     @Test public void quranGlass() throws Exception { shoot("tajawal", null, tab("TAB_QURAN"), "quran", false); }
     @Test public void homePoetry() throws Exception {
@@ -123,7 +123,7 @@ public final class ScreenshotPreview {
     }
     @Test public void homeTajawal() throws Exception { shoot("tajawal", null, tab("TAB_HOME"), "home-tajawal", false); }
     @Test public void homeFixed() throws Exception {
-        shoot("tajawal", "gallery/nature/mountain-lake.jpg", tab("TAB_HOME"), "home-fixed", false);
+        shoot("tajawal", "gallery/nature/mountain-lake.webp", tab("TAB_HOME"), "home-fixed", false);
     }
     @Test public void settings() throws Exception { shoot("tajawal", null, tab("TAB_HOME"), "settings", true); }
 }

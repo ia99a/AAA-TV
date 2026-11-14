@@ -86,11 +86,11 @@ public final class FeatureChecksTest {
     }
 
     @Test public void builtInWallpapersAreFourK() throws Exception {
-        File[] pictures = new File("src/main/assets/frames").listFiles((dir, name) -> name.endsWith(".jpg"));
+        File[] pictures = new File("src/main/assets/frames").listFiles((dir, name) -> name.endsWith(".webp"));
         assertNotNull(pictures);
         assertTrue(pictures.length >= 5);
         for (File picture : pictures) {
-            int[] size = jpegSize(java.nio.file.Files.readAllBytes(picture.toPath()));
+            int[] size = webpSize(java.nio.file.Files.readAllBytes(picture.toPath()));
             assertEquals(picture.getName(), 3840, size[0]);
             assertEquals(picture.getName(), 2160, size[1]);
             assertTrue(picture.getName() + " is too large", picture.length() < 4_000_000);
@@ -137,9 +137,9 @@ public final class FeatureChecksTest {
         assertEquals(6 + CalmWallpapers.DAMASK.length, CalmWallpapers.NAMES.length);
         assertTrue(CalmWallpapers.isDamask(CalmWallpapers.DEFAULT));
         for (String key : CalmWallpapers.DAMASK) {
-            File picture = new File("src/main/assets/damask/" + key + ".jpg");
+            File picture = new File("src/main/assets/damask/" + key + ".webp");
             assertTrue(key + " is missing", picture.isFile());
-            int[] size = jpegSize(java.nio.file.Files.readAllBytes(picture.toPath()));
+            int[] size = webpSize(java.nio.file.Files.readAllBytes(picture.toPath()));
             assertEquals(key, 3840, size[0]);
             assertEquals(key, 2160, size[1]);
             assertTrue(key + " is too large", picture.length() < 1_000_000);
@@ -148,11 +148,11 @@ public final class FeatureChecksTest {
 
     @Test public void galleryCategoriesHaveFourKPictures() throws Exception {
         for (String key : new String[]{"nature", "drawn", "aerial", "space", "aviation"}) {
-            File[] pictures = new File("src/main/assets/gallery/" + key).listFiles((dir, name) -> name.endsWith(".jpg"));
+            File[] pictures = new File("src/main/assets/gallery/" + key).listFiles((dir, name) -> name.endsWith(".webp"));
             assertNotNull(key, pictures);
             assertTrue(key + " is empty", pictures.length >= 2);
             for (File picture : pictures) {
-                int[] size = jpegSize(java.nio.file.Files.readAllBytes(picture.toPath()));
+                int[] size = webpSize(java.nio.file.Files.readAllBytes(picture.toPath()));
                 assertEquals(picture.getName(), 3840, size[0]);
                 assertEquals(picture.getName(), 2160, size[1]);
             }
@@ -214,6 +214,18 @@ public final class FeatureChecksTest {
     }
 
     /** Width and height from a JPEG's start-of-frame marker. */
+    /** Width and height from a WebP header (lossy VP8, lossless VP8L or extended VP8X). */
+    private static int[] webpSize(byte[] d) {
+        assertTrue("not a WebP file", d.length > 30 && d[0] == 'R' && d[1] == 'I' && d[8] == 'W' && d[9] == 'E');
+        String chunk = new String(d, 12, 4, java.nio.charset.StandardCharsets.US_ASCII);
+        if (chunk.equals("VP8 ")) return new int[]{((d[26] & 0xFF) | (d[27] & 0xFF) << 8) & 0x3FFF, ((d[28] & 0xFF) | (d[29] & 0xFF) << 8) & 0x3FFF};
+        if (chunk.equals("VP8L")) {
+            int b = (d[21] & 0xFF) | (d[22] & 0xFF) << 8 | (d[23] & 0xFF) << 16 | (d[24] & 0xFF) << 24;
+            return new int[]{(b & 0x3FFF) + 1, ((b >> 14) & 0x3FFF) + 1};
+        }
+        return new int[]{1 + ((d[24] & 0xFF) | (d[25] & 0xFF) << 8 | (d[26] & 0xFF) << 16), 1 + ((d[27] & 0xFF) | (d[28] & 0xFF) << 8 | (d[29] & 0xFF) << 16)};
+    }
+
     private static int[] jpegSize(byte[] data) {
         int i = 2;
         while (i + 9 < data.length) {

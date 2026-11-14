@@ -1851,7 +1851,7 @@ public final class MainActivity extends Activity {
                 int width = getResources().getDisplayMetrics().widthPixels;
                 lifecycleWork.execute(ioWorker, () -> {
                     android.graphics.Bitmap bitmap = null;
-                    try (java.io.InputStream in = getAssets().open("damask/day.jpg")) {
+                    try (java.io.InputStream in = getAssets().open("damask/day.webp")) {
                         BitmapFactory.Options options = new BitmapFactory.Options();
                         options.inSampleSize = width <= 1920 ? 2 : 1;
                         bitmap = BitmapFactory.decodeStream(in, null, options);

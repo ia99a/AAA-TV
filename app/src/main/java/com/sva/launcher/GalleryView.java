@@ -202,7 +202,7 @@ final class GalleryView extends FrameLayout {
                 String[] names = assets.list(folder);
                 if (names == null) continue;
                 Arrays.sort(names);
-                for (String name : names) if (name.endsWith(".jpg")) result.add(folder + "/" + name);
+                for (String name : names) if (name.endsWith(".webp")) result.add(folder + "/" + name);
             } catch (Exception ignored) { }
         }
         return result;
