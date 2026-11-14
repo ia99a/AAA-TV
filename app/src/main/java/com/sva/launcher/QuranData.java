@@ -150,6 +150,16 @@ final class QuranData {
             {"محمود خليل الحصري", "https://cdn.mp3quran.net/audio/mahmoud-husary/r1/"},
             // New reciters go at the end: the saved choice is a position in this list.
             {"محمد أيوب", "https://cdn.mp3quran.net/audio/muhammad-ayyub/r1/"},
+            // Imams of al-Masjid al-Haram (current and former) with all 114 surahs on mp3quran.
+            {"عبدالله الجهني", "https://cdn.mp3quran.net/audio/abdullah-juhani/r1/"},
+            {"عادل الكلباني", "https://cdn.mp3quran.net/audio/adel-kalbani/r1/"},
+            // Imams of al-Masjid an-Nabawi with all 114 surahs on mp3quran.
+            {"علي الحذيفي", "https://cdn.mp3quran.net/audio/ali-hudhaifi/r1/"},
+            {"صلاح البدير", "https://cdn.mp3quran.net/audio/salah-budair/r1/"},
+            {"عبدالله البعيجان", "https://cdn.mp3quran.net/audio/abdullah-buaijan/r1/"},
+            {"عبدالباري الثبيتي", "https://cdn.mp3quran.net/audio/abdulbari-thubaiti/r1/"},
+            {"عبدالمحسن القاسم", "https://cdn.mp3quran.net/audio/abdulmohsen-qasim/r1/"},
+            {"خالد المهنا", "https://cdn.mp3quran.net/audio/khalid-mohanna/r1/"},
     };
 
     private QuranData() { }
