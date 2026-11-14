@@ -24,7 +24,7 @@ final class AppUpdate {
     static final String APK_URL = "https://github.com/ia99a/AAA-TV/releases/download/tv-latest/aaa-tv.apk";
     static final String VERSION_URL = "https://github.com/ia99a/AAA-TV/releases/download/tv-latest/version.json";
     /** The Downloader short code that leads to {@link #APK_URL}. */
-    static final String DOWNLOADER_CODE = "5545086";
+    static final String DOWNLOADER_CODE = "4454086";
     static final String DOWNLOADER_PACKAGE = "com.esaba.downloader";
 
     interface Callback { void onResult(int latestCode, String latestName); }
