@@ -195,10 +195,14 @@ public final class FeatureChecksTest {
         }
     }
 
-    @Test public void oldTopBarIsHiddenUnderTheGlassTheme() throws Exception {
+    @Test public void onlyTheGlassHomeRemains() throws Exception {
         String main = new String(java.nio.file.Files.readAllBytes(
                 new File("src/main/java/com/sva/launcher/MainActivity.java").toPath()), java.nio.charset.StandardCharsets.UTF_8);
-        assertTrue(main.contains("homeTopBar.setVisibility(modern ? View.GONE : View.VISIBLE)"));
+        // The original home, live TV, games, YouTube shortcuts and the old full settings are gone for good.
+        for (String gone : new String[]{"homeTopBar", "SettingsScreen", "IptvRepository", "GameLibraryActivity", "YouTubeCard"})
+            assertFalse(gone, main.contains(gone));
+        for (String gone : new String[]{"GameRepository", "IptvRepository", "GuideActivity", "TvFilePickerActivity", "LauncherBackup"})
+            assertFalse(gone, new File("src/main/java/com/sva/launcher/" + gone + ".java").exists());
         assertEquals("أ • ب", ModernTheme.forFont("jomhuria", "أ · ب"));
         assertEquals("أ · ب", ModernTheme.forFont("tajawal", "أ · ب"));
         assertEquals("تجوال", ModernTheme.fontName("tajawal"));

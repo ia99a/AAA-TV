@@ -39,7 +39,6 @@ final class QuickSettingsView extends FrameLayout {
         void onMoodChanged(String mood);
         void onCalmColourChanged(int index);
         void onWeatherCityChanged(PrayerTimes.City city);
-        void onOpenAdvanced();
         /** {package, label} of every launchable app, sorted by name. */
         List<String[]> installedApps();
         /** Packages shown on Home, in order. */
@@ -65,7 +64,7 @@ final class QuickSettingsView extends FrameLayout {
     private static final String[] CATEGORY_ICONS = {"look", "fonts", "walls", "home", "prayer", "system"};
 
     // Options.
-    private static final int THEME = 0, MODE = 1, FONT = 2, VERSE_FONT = 3, TEXT_SIZE = 4, FONT_SAMPLE = 5,
+    private static final int MODE = 1, FONT = 2, VERSE_FONT = 3, TEXT_SIZE = 4, FONT_SAMPLE = 5,
             MOOD = 6, COLOUR = 7, FIXED = 8, FIXED_SCREEN = 9, FIXED_CLEAR = 16, GALLERY_SET = 17, GALLERY = 18,
             CARD = 20, APPS = 40, TABS = 41, WEATHER = 42, PRAYER_CITY = 43, ALERTS = 44, KIOSK = 45, ABOUT = 46, UPDATE = 47;
     private static final int SEG = 0, SWITCH = 1, VALUE = 2, GO = 3, ACTION = 4, TILES = 5, INFO = 6, PICK = 7;
@@ -262,14 +261,13 @@ final class QuickSettingsView extends FrameLayout {
         title.setText(CATEGORY_NAMES[category]);
         ids.clear();
         kinds.clear();
-        boolean modern = ModernTheme.modern(preferences);
         switch (category) {
             case LOOK:
                 subtitle.setText("طريقة العرض");
                 add(MODE, SEG);
                 break;
             case FONTS:
-                subtitle.setText(modern ? "يتغيّر النص في «آمر» مباشرة" : "خط الواجهة وحجمه يظهران في ثيم «بسيط ٢»");
+                subtitle.setText("يتغيّر النص في «آمر» مباشرة");
                 add(FONT, TILES);
                 add(VERSE_FONT, SEG);
                 add(TEXT_SIZE, SEG);
@@ -279,7 +277,7 @@ final class QuickSettingsView extends FrameLayout {
                 subtitle.setText("خلفية «آمر» وشاشة «الخلفيات»");
                 add(MOOD, VALUE);
                 if (WallpaperMoods.CALM.equals(WallpaperMoods.current(preferences))) add(COLOUR, VALUE);
-                if (modern) {
+                {
                     add(FIXED, PICK);
                     if (FixedBackground.picture(preferences) != null) {
                         for (int i = 0; i < FixedBackground.SCREEN_KEYS.length; i++) add(FIXED_SCREEN + i, SWITCH);
@@ -290,10 +288,10 @@ final class QuickSettingsView extends FrameLayout {
                 add(GALLERY, VALUE);
                 break;
             case HOME:
-                subtitle.setText(modern ? "البطاقات والتطبيقات والتبويبات" : "التطبيقات في الشاشة الرئيسية");
-                if (modern) for (int i = 0; i < ModernTheme.CARD_KEYS.length; i++) add(CARD + i, SWITCH);
+                subtitle.setText("البطاقات والتطبيقات والتبويبات");
+                for (int i = 0; i < ModernTheme.CARD_KEYS.length; i++) add(CARD + i, SWITCH);
                 add(APPS, GO);
-                if (modern) add(TABS, GO);
+                add(TABS, GO);
                 break;
             case PRAYER:
                 subtitle.setText("أوقات الصلاة والتنبيه والطقس");
@@ -393,8 +391,7 @@ final class QuickSettingsView extends FrameLayout {
             case SEG: {
                 String[] items;
                 int on;
-                if (id == THEME) { items = ModernTheme.THEME_NAMES; on = ModernTheme.theme(preferences) - 1; }
-                else if (id == MODE) { items = new String[]{"ليل", "نهار"}; on = ModernTheme.day(preferences) ? 1 : 0; }
+                if (id == MODE) { items = new String[]{"ليل", "نهار"}; on = ModernTheme.day(preferences) ? 1 : 0; }
                 else if (id == VERSE_FONT) { items = ModernTheme.VERSE_FONT_NAMES; on = "naskh".equals(ModernTheme.verseFont(preferences)) ? 1 : 0; }
                 else { items = ModernTheme.TEXT_SIZE_NAMES; on = ModernTheme.textSize(preferences); }
                 LinearLayout seg = new LinearLayout(context);
@@ -510,7 +507,6 @@ final class QuickSettingsView extends FrameLayout {
         if (id >= CARD && id < CARD + ModernTheme.CARD_KEYS.length) return ModernTheme.CARD_NAMES[id - CARD];
         if (id >= FIXED_SCREEN && id < FIXED_SCREEN + FixedBackground.SCREEN_KEYS.length) return "على " + FixedBackground.SCREEN_NAMES[id - FIXED_SCREEN];
         switch (id) {
-            case THEME: return "الثيم";
             case MODE: return "الوضع";
             case VERSE_FONT: return "خط الآية";
             case TEXT_SIZE: return "حجم الخط";
@@ -534,7 +530,6 @@ final class QuickSettingsView extends FrameLayout {
 
     private String detail(int id) {
         switch (id) {
-            case THEME: return "بسيط ١ الواجهة الأصلية  ·  بسيط ٢ البطاقات الزجاجية";
             case MODE: return "للثيم «بسيط ٢»";
             case VERSE_FONT: return "في «آمر» وصفحة الصلاة";
             case FIXED: {
@@ -638,12 +633,6 @@ final class QuickSettingsView extends FrameLayout {
             FixedBackground.toggle(preferences, FixedBackground.SCREEN_KEYS[id - FIXED_SCREEN]);
             listener.onFixedBackgroundChanged();
         } else switch (id) {
-            case THEME:
-                preferences.edit().putInt(ModernTheme.PREF_THEME,
-                        ModernTheme.theme(preferences) == ModernTheme.SIMPLE_1 ? ModernTheme.SIMPLE_2 : ModernTheme.SIMPLE_1).apply();
-                listener.onHomeThemeChanged();
-                structure = true;
-                break;
             case MODE:
                 preferences.edit().putString(ModernTheme.PREF_MODE, ModernTheme.day(preferences) ? "night" : "day").apply();
                 listener.onHomeThemeChanged();

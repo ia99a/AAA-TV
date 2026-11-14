@@ -11,14 +11,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Settings for the home themes: «بسيط ١» (the original home) and «بسيط ٢» (glass cards), plus
- * the day/night look, the font, which cards show, and which tabs sit in the bottom bar.
+ * Settings for the glass home: the day/night look, the font, which cards show, and which tabs sit in the bottom bar.
  */
 final class ModernTheme {
-    static final String PREF_THEME = "homeTheme", PREF_MODE = "homeMode", PREF_FONT = "homeFont",
+    static final String PREF_MODE = "homeMode", PREF_FONT = "homeFont",
             PREF_TABS = "modernTabs", CARD_PREFIX = "homeCard_";
-    static final int SIMPLE_1 = 1, SIMPLE_2 = 2;
-    static final String[] THEME_NAMES = {"بسيط ١", "بسيط ٢"};
 
     static final String[] FONT_KEYS = {"noto", "tajawal", "harmattan", "jomhuria", "ruqaa"};
     static final String[] FONT_NAMES = {"نوتو", "تجوال", "هرمتان", "جمهورية", "الرقعة"};
@@ -44,9 +41,6 @@ final class ModernTheme {
 
     private ModernTheme() { }
 
-    /** «بسيط ١» was retired: every install, including ones that had chosen it, now uses «بسيط ٢». */
-    static int theme(SharedPreferences p) { return SIMPLE_2; }
-    static boolean modern(SharedPreferences p) { return theme(p) == SIMPLE_2; }
     static boolean day(SharedPreferences p) { return "day".equals(p.getString(PREF_MODE, "night")); }
 
     static String font(SharedPreferences p) {

@@ -50,15 +50,6 @@ final class LiquidTheme {
     static int accent(Context context) { return isLight(context) ? 0xFF087D91 : 0xFF7BE7F4; }
     static int lavender(Context context) { return secondaryText(context); }
 
-    static Drawable scenicBackground(Context context) {
-        Drawable photo = context.getDrawable(R.drawable.mountain_wallpaper);
-        GradientDrawable veil = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                isLight(context)
-                        ? new int[]{0xB8E9F1EE, 0xE8E9F1EE, 0xF4E9F1EE}
-                        : new int[]{0x91041114, 0xC907171A, 0xF4071417});
-        return new LayerDrawable(new Drawable[]{photo, veil});
-    }
-
     static int dp(Context context, float value) {
         return Math.round(value * context.getResources().getDisplayMetrics().density);
     }

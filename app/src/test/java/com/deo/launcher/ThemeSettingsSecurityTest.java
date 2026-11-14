@@ -93,14 +93,6 @@ public final class ThemeSettingsSecurityTest {
         assertEquals(java.util.Arrays.asList("quran", "prayer", "haram"), tabs);
     }
 
-    @Test public void onlySimple2Remains() {
-        Prefs p = new Prefs();
-        for (int saved : new int[]{1, 2, 99}) {
-            p.values.put(ModernTheme.PREF_THEME, saved);
-            assertEquals(ModernTheme.SIMPLE_2, ModernTheme.theme(p));
-        }
-    }
-
     @Test public void galleryCategoryCannotPointOutsideTheBundledFolders() {
         Prefs p = new Prefs();
         p.values.put(GalleryView.PREF_CATEGORY, "../../databases");

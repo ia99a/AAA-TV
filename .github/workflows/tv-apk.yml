@@ -5,7 +5,7 @@ name: TV APK
 # (sva-tv.apk is the same file, kept so older links keep working)
 on:
   push:
-    branches: [prayer-tab]
+    branches: [prayer-tab, slim]
   workflow_dispatch:
 permissions:
   contents: write
@@ -24,7 +24,7 @@ jobs:
           packages: platform-tools
           log-accepted-android-sdk-licenses: false
       - name: Install pinned Android toolchain
-        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358'
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
       - name: Build release APK and run tests
         run: |
           set -o pipefail
@@ -44,6 +44,8 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Publish to the tv-latest release
+        # Only the main branch reaches users; other branches just build, test and draw the review screens.
+        if: github.ref_name == 'prayer-tab'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

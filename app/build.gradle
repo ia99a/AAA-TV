@@ -7,7 +7,6 @@ android {
 
     compileSdk 36
 
-    ndkVersion "28.2.13676358"
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -92,9 +91,7 @@ dependencies {
     def media3Version = "1.8.1"
     implementation "androidx.media3:media3-exoplayer:$media3Version"
     implementation "androidx.media3:media3-exoplayer-hls:$media3Version"
-    implementation "androidx.media3:media3-exoplayer-dash:$media3Version"
     implementation "androidx.media3:media3-ui:$media3Version"
-    implementation "androidx.recyclerview:recyclerview:1.4.0"
     testImplementation "junit:junit:4.13.2"
     testImplementation "org.json:json:20240303"
     // Draws real screens on the build server for review (run only with -Pscreens=true).

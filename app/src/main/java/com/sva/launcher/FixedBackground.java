@@ -5,7 +5,7 @@ import android.content.SharedPreferences;
 import java.util.regex.Pattern;
 
 /**
- * «الخلفية الثابتة» in «بسيط ٢»: one picture from «الخلفيات», chosen with a long press on OK, shown
+ * «الخلفية الثابتة»: one picture from «الخلفيات», chosen with a long press on OK, shown
  * still behind «آمر», the prayer page, «تاريخك» and the Quran player, each of which can be switched off on its own.
  */
 final class FixedBackground {
@@ -41,9 +41,9 @@ final class FixedBackground {
         p.edit().putBoolean(PREF_ON_PREFIX + screen, !on(p, screen)).apply();
     }
 
-    /** Whether the picture shows on this screen right now: «بسيط ٢», a picture, and the screen switched on. */
+    /** Whether the picture shows on this screen right now: a picture is chosen and the screen is switched on. */
     static boolean showsOn(SharedPreferences p, String screen) {
-        return screen != null && ModernTheme.modern(p) && picture(p) != null && on(p, screen);
+        return screen != null && picture(p) != null && on(p, screen);
     }
 
     /** "طبيعة · mountain lake" style label for the settings. */

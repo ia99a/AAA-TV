@@ -270,7 +270,7 @@ final class GalleryView extends FrameLayout {
             screens.append(FixedBackground.SCREEN_NAMES[i]);
         }
         showMessage(screens.length() == 0 ? "حُفظت الصورة خلفية ثابتة · فعّلها من الإعدادات ← الخلفيات"
-                : "صارت خلفية ثابتة لـ " + screens + (ModernTheme.modern(preferences) ? "" : " في «بسيط ٢»"));
+                : "صارت خلفية ثابتة لـ " + screens);
         if (onFixedChanged != null) onFixedChanged.run();
     }
 

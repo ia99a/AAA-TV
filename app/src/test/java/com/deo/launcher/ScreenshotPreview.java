@@ -39,7 +39,7 @@ public final class ScreenshotPreview {
     }
 
     private static void prepare(SharedPreferences p, String font, String fixed) {
-        SharedPreferences.Editor e = p.edit().putInt(ModernTheme.PREF_THEME, ModernTheme.SIMPLE_2)
+        SharedPreferences.Editor e = p.edit()
                 .putString(ModernTheme.PREF_FONT, font).putBoolean("firstRunShown", true);
         if (fixed != null) e.putString(FixedBackground.PREF_PICTURE, fixed); else e.remove(FixedBackground.PREF_PICTURE);
         e.commit();
