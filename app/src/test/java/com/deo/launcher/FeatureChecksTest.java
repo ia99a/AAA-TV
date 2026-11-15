@@ -138,7 +138,7 @@ public final class FeatureChecksTest {
     }
 
     @Test public void galleryCategoriesHaveFourKPictures() throws Exception {
-        for (String key : new String[]{"nature", "drawn", "aerial", "space", "aviation"}) {
+        for (String key : new String[]{"nature", "drawn", "aerial", "space", "aviation", "cars", "patterns", "national", "abstract"}) {
             File[] pictures = new File("src/main/assets/gallery/" + key).listFiles((dir, name) -> name.endsWith(".webp"));
             assertNotNull(key, pictures);
             assertTrue(key + " is empty", pictures.length >= 2);

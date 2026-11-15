@@ -1297,7 +1297,7 @@ public final class MainActivity extends Activity {
         if (calendarMonthGrid == null) return;
         boolean light = LiquidTheme.isLight(this);
         String monthName = ArabicFormat.month(displayedMonth.getMonthValue());
-        SpannableString headingText = new SpannableString(monthName + " " + ArabicFormat.digits(displayedMonth.getYear()));
+        SpannableString headingText = new SpannableString(monthName + " " + displayedMonth.getYear());
         headingText.setSpan(new ForegroundColorSpan(light ? LiquidTheme.secondaryText(this) : 0xFFAFC6D2), monthName.length() + 1,
                 headingText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         monthTitle.setText(headingText);
@@ -1657,7 +1657,7 @@ public final class MainActivity extends Activity {
         // Right-to-left cell: Gregorian day on the right, Hijri day on the left.
         Paint.FontMetrics dateFm = datePaint.getFontMetrics();
         float row1Baseline = getPaddingTop() - dateFm.ascent;
-        String number = ArabicFormat.digits(dayNumber);
+        String number = String.valueOf(dayNumber);
         float numberWidth = datePaint.measureText(number);
         if (muted) datePaint.setColor(LiquidTheme.isLight(MainActivity.this) ? 0x664D6968 : 0x8078818A);
         if (today) {

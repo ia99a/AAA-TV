@@ -13,7 +13,7 @@ final class FixedBackground {
     static final String[] SCREEN_KEYS = {"home", "prayer", "events", "quran"};
     static final String[] SCREEN_NAMES = {"«آمر»", "الصلاة", "تاريخك", "القرآن الكريم"};
     /** Only pictures bundled in the app: a known folder and a plain file name, nothing else. */
-    private static final Pattern ASSET = Pattern.compile("(frames|gallery/(nature|drawn|aerial|space|aviation))/[a-z0-9][a-z0-9-]{0,60}\\.webp");
+    private static final Pattern ASSET = Pattern.compile("(frames|gallery/(nature|drawn|aerial|space|aviation|cars|patterns|national|abstract))/[a-z0-9][a-z0-9-]{0,60}\\.webp");
 
     private FixedBackground() { }
 

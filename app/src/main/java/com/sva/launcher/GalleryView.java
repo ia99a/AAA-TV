@@ -34,8 +34,10 @@ final class GalleryView extends FrameLayout {
     static final int DEFAULT_INTERVAL = 1;
     static final String PREF_CATEGORY = "galleryCategory";
     /** Categories: the framed paintings, then the photo and drawing collections under assets/gallery. */
-    static final String[] CATEGORY_KEYS = {"frames", "nature", "drawn", "aerial", "space", "aviation", "all"};
-    static final String[] CATEGORY_NAMES = {"لوحات", "طبيعة", "رسومات", "من الأعلى", "فضاء وغروب", "طيران", "الكل"};
+    static final String[] CATEGORY_KEYS = {"frames", "nature", "drawn", "aerial", "space", "aviation",
+            "cars", "patterns", "national", "abstract", "all"};
+    static final String[] CATEGORY_NAMES = {"لوحات", "طبيعة", "رسومات", "من الأعلى", "فضاء وغروب", "طيران",
+            "سيارات", "زخارف وسجاد", "وطني", "تجريدي", "الكل"};
     private static final long FADE_MS = 2_000L;
 
     private final SharedPreferences preferences;
@@ -195,7 +197,8 @@ final class GalleryView extends FrameLayout {
     static List<String> picturesIn(android.content.res.AssetManager assets, String key) {
         ArrayList<String> result = new ArrayList<>();
         String[] folders = "all".equals(key)
-                ? new String[]{"frames", "gallery/nature", "gallery/drawn", "gallery/aerial", "gallery/space", "gallery/aviation"}
+                ? new String[]{"frames", "gallery/nature", "gallery/drawn", "gallery/aerial", "gallery/space", "gallery/aviation",
+                        "gallery/cars", "gallery/patterns", "gallery/national", "gallery/abstract"}
                 : new String[]{"frames".equals(key) ? "frames" : "gallery/" + key};
         for (String folder : folders) {
             try {
