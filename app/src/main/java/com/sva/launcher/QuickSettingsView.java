@@ -66,7 +66,7 @@ final class QuickSettingsView extends FrameLayout {
     // Options.
     private static final int MODE = 1, FONT = 2, VERSE_FONT = 3, TEXT_SIZE = 4, FONT_SAMPLE = 5,
             MOOD = 6, COLOUR = 7, FIXED = 8, FIXED_SCREEN = 9, FIXED_CLEAR = 16, GALLERY_SET = 17, GALLERY = 18,
-            CARD = 20, APPS = 40, TABS = 41, WEATHER = 42, PRAYER_CITY = 43, ALERTS = 44, KIOSK = 45, ABOUT = 46, UPDATE = 47;
+            CARD = 20, APPS = 40, TABS = 41, WEATHER = 42, PRAYER_CITY = 43, ALERTS = 44, KIOSK = 45, ABOUT = 46, UPDATE = 47, WIFI = 48;
     private static final int SEG = 0, SWITCH = 1, VALUE = 2, GO = 3, ACTION = 4, TILES = 5, INFO = 6, PICK = 7;
     private static final int PAGE_OPTIONS = 0, PAGE_APPS = 1, PAGE_TABS = 2;
 
@@ -301,6 +301,7 @@ final class QuickSettingsView extends FrameLayout {
                 break;
             default:
                 subtitle.setText(" ");
+                add(WIFI, GO);
                 add(KIOSK, SWITCH);
                 add(UPDATE, ACTION);
                 add(ABOUT, INFO);
@@ -523,6 +524,7 @@ final class QuickSettingsView extends FrameLayout {
             case ALERTS: return "تنبيه الأذان والإقامة";
             case KIOSK: return "المشغّل دائم على الشاشة";
             case ABOUT: return "عن التطبيق";
+            case WIFI: return "الواي فاي والشبكة";
             case UPDATE: return latestCode > currentCode() ? "تحديث التطبيق  ·  متوفر" : "تحديث التطبيق";
             default: return "";
         }
@@ -550,6 +552,7 @@ final class QuickSettingsView extends FrameLayout {
             case ALERTS: return "بطاقة صغيرة فوق التطبيقات عند الأذان والإقامة";
             case KIOSK: return "يرجع «آمر» بعد إطفاء الشاشة وتشغيلها";
             case ABOUT: return "AAA TV  ·  الإصدار " + version();
+            case WIFI: return networkStatus() + "  ·  OK لاختيار شبكة";
             case UPDATE:
                 if (checkingUpdate) return "يتحقق من وجود إصدار أحدث…";
                 if (latestCode < 0) return "تعذّر التحقق الآن  ·  OK للتحميل عبر Downloader";
@@ -582,6 +585,40 @@ final class QuickSettingsView extends FrameLayout {
         if (id == ALERTS) return preferences.getBoolean(PrayerAlerts.PREF_ENABLED, false);
         if (id == KIOSK) return preferences.getBoolean(LauncherOverrideService.KIOSK, true);
         return false;
+    }
+
+    /** Connected by Wi-Fi, by cable, or not at all (the network's name needs location access, so it is not shown). */
+    private String networkStatus() {
+        try {
+            android.net.ConnectivityManager connectivity = (android.net.ConnectivityManager)
+                    getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+            android.net.NetworkCapabilities caps = connectivity == null ? null
+                    : connectivity.getNetworkCapabilities(connectivity.getActiveNetwork());
+            if (caps == null) return "غير متصل بالإنترنت";
+            boolean online = caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+            String via = caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ? "متصل بالواي فاي"
+                    : caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) ? "متصل بالكيبل" : "متصل";
+            return online ? via : via + " بلا إنترنت";
+        } catch (RuntimeException unknown) {
+            return "حالة الشبكة غير معروفة";
+        }
+    }
+
+    /** The TV's own Wi-Fi list; older or unusual boxes fall back to network, then general settings. */
+    private void openWifiSettings() {
+        String[] actions = {android.provider.Settings.ACTION_WIFI_SETTINGS,
+                android.provider.Settings.ACTION_WIRELESS_SETTINGS, android.provider.Settings.ACTION_SETTINGS};
+        for (String action : actions) {
+            try {
+                getContext().startActivity(new android.content.Intent(action)
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+                return;
+            } catch (RuntimeException notHere) {
+                // Try the next screen.
+            }
+        }
+        android.widget.Toast.makeText(getContext(), "افتح إعدادات التلفزيون ← الشبكة والإنترنت",
+                android.widget.Toast.LENGTH_LONG).show();
     }
 
     /** -1 unreadable, 0 not checked yet, otherwise the published version code. */
@@ -707,6 +744,10 @@ final class QuickSettingsView extends FrameLayout {
             case UPDATE:
                 close();
                 AppUpdate.openDownloader(getContext());
+                return;
+            case WIFI:
+                close();
+                openWifiSettings();
                 return;
             case KIOSK: {
                 boolean enabled = !preferences.getBoolean(LauncherOverrideService.KIOSK, true);
