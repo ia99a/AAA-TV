@@ -1148,7 +1148,7 @@ public final class MainActivity extends Activity {
         eventSummary.setOrientation(LinearLayout.VERTICAL);
         eventSummary.setGravity(Gravity.CENTER_VERTICAL);
         eventSummary.setPadding(dp(20), 0, dp(20), 0);
-        calendarHeaderDate = label("", 10, LiquidTheme.accent(this), true);
+        calendarHeaderDate = label("", 10, 0xFFE3B469, true);
         calendarHeaderDate.setLetterSpacing(0f);
         calendarHeaderDate.setTextSize(12);
         calendarHeaderDate.setGravity(Gravity.RIGHT);
@@ -1211,27 +1211,7 @@ public final class MainActivity extends Activity {
             renderMonthCalendar(cachedCalendarEvents());
         });
 
-        calendarMonthGrid = new GridLayout(this) {
-            private final Paint rulePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-
-            @Override protected void dispatchDraw(Canvas canvas) {
-                super.dispatchDraw(canvas);
-                rulePaint.setColor(LiquidTheme.isLight(MainActivity.this) ? 0x55708B88 : 0x558FAEAC);
-                rulePaint.setStrokeWidth(dp(1));
-                if (getChildCount() > 7) {
-                    int top = getChildAt(7).getTop();
-                    for (int i = 7; i < getChildCount(); i += 7) {
-                        int y = getChildAt(i).getTop();
-                        canvas.drawLine(0, y, getWidth(), y, rulePaint);
-                    }
-                    for (int i = 8; i < Math.min(14, getChildCount()); i++) {
-                        int x = getChildAt(i).getLeft();
-                        canvas.drawLine(x, top, x, getHeight(), rulePaint);
-                    }
-                }
-                super.dispatchDraw(canvas);
-            }
-        };
+        calendarMonthGrid = new GridLayout(this);
         // Right-to-left: the month reads from the right, as in an Arabic calendar.
         mirrorRow(monthSwitcher);
         mirrorRow(monthHeading);
@@ -1268,7 +1248,6 @@ public final class MainActivity extends Activity {
             case SaudiCalendar.WHITE_DAYS: return 0x88707C8A;
             case SaudiCalendar.NATIONAL: return 0xAA0F5A35;
             case SaudiCalendar.SCHOOL: return 0xAA7A5A1C;
-            case SaudiCalendar.PERSONAL: return 0xDD8E1F4E;
             default: break;
         }
         String name = title.toLowerCase(Locale.ROOT);
@@ -1285,7 +1264,6 @@ public final class MainActivity extends Activity {
             case SaudiCalendar.WHITE_DAYS: return 0xFFF2F2EC;
             case SaudiCalendar.NATIONAL: return 0xFF3CCB7F;
             case SaudiCalendar.SCHOOL: return 0xFFFFC857;
-            case SaudiCalendar.PERSONAL: return 0xFFC2185B;
             default: break;
         }
         String name = title.toLowerCase(Locale.ROOT);
@@ -1319,7 +1297,7 @@ public final class MainActivity extends Activity {
         if (calendarMonthGrid == null) return;
         boolean light = LiquidTheme.isLight(this);
         String monthName = ArabicFormat.month(displayedMonth.getMonthValue());
-        SpannableString headingText = new SpannableString(monthName + " " + displayedMonth.getYear());
+        SpannableString headingText = new SpannableString(monthName + " " + ArabicFormat.digits(displayedMonth.getYear()));
         headingText.setSpan(new ForegroundColorSpan(light ? LiquidTheme.secondaryText(this) : 0xFFAFC6D2), monthName.length() + 1,
                 headingText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         monthTitle.setText(headingText);
@@ -1358,12 +1336,13 @@ public final class MainActivity extends Activity {
             int dayNumber = i - offset + 1;
             View cell;
             if (dayNumber < 1 || dayNumber > displayedMonth.lengthOfMonth()) {
-                TextView overflow = label(String.valueOf(dayNumber < 1
-                        ? displayedMonth.minusMonths(1).lengthOfMonth() + dayNumber
-                        : dayNumber - displayedMonth.lengthOfMonth()), 20,
-                        light ? 0x554D6968 : 0xFF78818A, false);
-                overflow.setGravity(Gravity.TOP | Gravity.RIGHT);
-                overflow.setPadding(0, dp(8), dp(13), 0);
+                LocalDate outside = displayedMonth.atDay(1).plusDays(dayNumber - 1);
+                CalendarDayButton overflow = new CalendarDayButton(this);
+                overflow.setContent(outside.getDayOfMonth(), null, false);
+                overflow.setHijri(SaudiCalendar.hijriCellLabel(outside));
+                overflow.setMuted(true);
+                overflow.setFocusable(false);
+                overflow.setClickable(false);
                 overflow.setBackground(glassTile(false, true));
                 cell = overflow;
             } else {
@@ -1385,9 +1364,6 @@ public final class MainActivity extends Activity {
                     bars.add(new CalendarBar("", calendarEventDotColor(event.title),
                             day.equals(first), day.equals(last)));
                 }
-                // Personal occasions (like «هبة الكريم») come first, so they keep their chip on a busy day.
-                eventTitles.sort((a, b) -> Boolean.compare(SaudiCalendar.kindOf(b) == SaudiCalendar.PERSONAL,
-                        SaudiCalendar.kindOf(a) == SaudiCalendar.PERSONAL));
                 CalendarDayButton dateButton = new CalendarDayButton(this);
                 dateButton.setContent(dayNumber, eventTitles, day.equals(LocalDate.now()));
                 dateButton.setHijri(SaudiCalendar.hijriCellLabel(day));
@@ -1423,6 +1399,7 @@ public final class MainActivity extends Activity {
             params.width = dp(cellWidth) - 2 * gap;
             params.height = dp(cellHeight) - 2 * gap;
             params.setMargins(gap, gap, gap, gap);
+            params.rowSpec = GridLayout.spec(GridLayout.UNDEFINED, GridLayout.TOP);
             calendarMonthGrid.addView(cell, params);
         }
         updateCalendarDaySelection();
@@ -1551,7 +1528,7 @@ public final class MainActivity extends Activity {
     private final Paint barPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint hijriPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final ArrayList<String> eventTitles = new ArrayList<>();
-    private boolean today;
+    private boolean today, muted;
 
     private final Paint datePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint weekdayPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -1624,6 +1601,9 @@ public final class MainActivity extends Activity {
         invalidate();
     }
 
+    /** A day of the month before or after, shown faintly to fill the week. */
+    public void setMuted(boolean value) { muted = value; invalidate(); }
+
     public void setBars(List<CalendarBar> values) {
         bars.clear();
         if (values != null) bars.addAll(values);
@@ -1677,17 +1657,27 @@ public final class MainActivity extends Activity {
         // Right-to-left cell: Gregorian day on the right, Hijri day on the left.
         Paint.FontMetrics dateFm = datePaint.getFontMetrics();
         float row1Baseline = getPaddingTop() - dateFm.ascent;
-        datePaint.setTextAlign(Paint.Align.RIGHT);
+        String number = ArabicFormat.digits(dayNumber);
+        float numberWidth = datePaint.measureText(number);
+        if (muted) datePaint.setColor(LiquidTheme.isLight(MainActivity.this) ? 0x664D6968 : 0x8078818A);
         if (today) {
-            // Today: the date sits in a gold disc, in the same gold as the bar's underline.
-            float textWidth = datePaint.measureText(String.valueOf(dayNumber));
-            float cx = right - textWidth / 2f, cy = row1Baseline + (dateFm.ascent + dateFm.descent) / 2f;
-            float radius = Math.max(textWidth, -dateFm.ascent) / 2f + dp(6);
+            // Today: the date sits centred in a gold disc that stays wholly inside the tile.
+            float radius = Math.max(numberWidth, -dateFm.ascent * 0.72f) / 2f + dp(5);
+            float cy = row1Baseline + (dateFm.ascent * 0.72f) / 2f;
+            float shift = Math.max(0, getPaddingTop() + dp(2) - (cy - radius));
+            cy += shift;
+            row1Baseline += shift;
+            float cx = right - dp(2) - radius;
             todayPaint.setColor(0xFFE3B469);
             canvas.drawCircle(cx, cy, radius, todayPaint);
             datePaint.setColor(0xFF1B2024);
+            datePaint.setTextAlign(Paint.Align.CENTER);
+            canvas.drawText(number, cx, cy - (dateFm.ascent * 0.72f) / 2f, datePaint);
+            numberWidth = 2 * radius - dp(2);
+        } else {
+            datePaint.setTextAlign(Paint.Align.RIGHT);
+            canvas.drawText(number, right, row1Baseline, datePaint);
         }
-        canvas.drawText(String.valueOf(dayNumber), right - (today ? dp(2) : 0), row1Baseline, datePaint);
         datePaint.setColor(primary);
         datePaint.setTextAlign(Paint.Align.LEFT);
 
@@ -1697,7 +1687,7 @@ public final class MainActivity extends Activity {
             boolean monthStart = hijriLabel.indexOf(' ') > 0;
             hijriPaint.setTextSize(glass ? sp(10.5f * Math.min(homeTextScale(), 1.2f)) : sp(11));
             if (glass) hijriPaint.setTypeface(homeTypeface(400));
-            hijriPaint.setColor(monthStart ? 0xFFE3B469 : secondary);
+            hijriPaint.setColor(muted ? (secondary & 0x00FFFFFF) | 0x66000000 : monthStart ? 0xFFE3B469 : secondary);
             hijriPaint.setTextAlign(Paint.Align.LEFT);
             float textLeft = left + dp(2);
             if (monthStart) {
@@ -1706,7 +1696,7 @@ public final class MainActivity extends Activity {
                 textLeft += size + dp(3);
             }
             canvas.drawText(ellipsize(hijriLabel, hijriPaint, Math.max(0, right - textLeft
-                    - datePaint.measureText(String.valueOf(dayNumber)) - dp(8))), textLeft, row1Baseline, hijriPaint);
+                    - numberWidth - dp(8))), textLeft, row1Baseline, hijriPaint);
         }
 
 

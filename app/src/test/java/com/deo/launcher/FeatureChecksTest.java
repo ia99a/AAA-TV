@@ -53,18 +53,9 @@ public final class FeatureChecksTest {
         }
     }
 
-    @Test public void personalOccasionIsEveryTwentiethOfMay() {
-        for (int year = 2027; year <= 2029; year++) {
-            List<SaudiCalendar.Item> items = SaudiCalendar.between(LocalDate.of(year, 5, 1), LocalDate.of(year, 5, 31));
-            boolean found = false;
-            for (SaudiCalendar.Item item : items)
-                if (item.title.equals("هبة الكريم")) {
-                    found = true;
-                    assertEquals(LocalDate.of(year, 5, 20), item.start);
-                    assertEquals(SaudiCalendar.PERSONAL, item.kind);
-                }
-            assertTrue("missing in " + year, found);
-        }
+    @Test public void noPersonalOccasionsInTheCalendar() {
+        for (SaudiCalendar.Item item : SaudiCalendar.between(LocalDate.of(2026, 1, 1), LocalDate.of(2029, 12, 31)))
+            assertFalse(item.title, item.title.contains("هبة"));
     }
 
     @Test public void quranHasAllSurahsAndSecureAudio() {
